@@ -175,10 +175,8 @@
 @media (max-width: 640px) {
   .cmtr-fab { right: 14px; bottom: 132px; }
   .cmtr-menu { right: 14px; bottom: 186px; }
-  .cmtr-corner { top: 64px; right: 12px; width: calc(100vw - 24px); }
+  .cmtr-corner { top: calc(58px + env(safe-area-inset-top, 0px)); right: 10px; width: min(300px, calc(100vw - 20px)); }
   .cmtr-mini-item { -webkit-line-clamp: 2; }
-  .cmtr-side { top: auto; left: 0; right: 0; bottom: 0; width: 100%; height: 62vh; height: 62dvh; border-radius: 26px 26px 0 0; padding-bottom: env(safe-area-inset-bottom, 0px); animation-name: cmtr-up; }
-  @keyframes cmtr-up { from { opacity: 0.4; transform: translateY(30px); } }
 }
 @media (prefers-reduced-transparency: reduce) {
   .cmtr-fab, .cmtr-menu, .cmtr-side, .cmtr-mini, .cmtr-pop { background: #1f1f23; -webkit-backdrop-filter: none; backdrop-filter: none; }
@@ -192,6 +190,11 @@
 .cmtr-mini-compose .cmtr-input { flex: 1 1 120px; min-width: 0; }
 .cmtr-mini-compose .cmtr-compose-bar { margin: 0; flex: none; gap: 6px; }
 .cmtr-mini-compose .cmtr-err { flex-basis: 100%; }
+.cmtr-mini-compose .cmtr-err:empty { display: none; }
+/* one quiet line until you start writing; the time, Spoiler and Post appear while the box has focus or text */
+.cmtr-mini-compose .cmtr-compose-bar { display: none; }
+.cmtr-mini-compose .cmtr-compose:focus-within .cmtr-compose-bar,
+.cmtr-mini-compose .cmtr-compose.has-text .cmtr-compose-bar { display: flex; }
 @media (max-width: 640px) {
   /* three newest moments on a phone, so the panel stays out of the picture */
   .cmtr-mini-item:first-child:nth-last-child(4) { display: none; }
@@ -200,7 +203,7 @@
 }
 
 /* the live panel steps aside after a long quiet stretch, and fades back when a comment arrives */
-.cmtr-corner { transition: opacity 0.6s var(--c-ease); }
+.cmtr-corner { transition: opacity 0.6s var(--c-ease), top 0.25s var(--c-ease); }
 .cmtr-corner.is-resting { opacity: 0; pointer-events: none; }
 .cmtr-mini-item.is-filler { color: var(--c-text-2); }
 .cmtr-from { display: inline-block; font-size: 11.5px; line-height: 18px; padding: 0 6px; margin-right: 2px; border-radius: 999px; background: rgba(255, 255, 255, 0.06); color: var(--c-text-3); font-weight: 600; font-variant-numeric: tabular-nums; vertical-align: 1px; }
@@ -214,6 +217,37 @@ html.cmtr-squeeze .videoOsdBottom { left: 0; }
 .videoPlayerContainer, .videoOsdBottom { transition: right 0.28s var(--c-ease); }
 html.cmtr-squeeze .cmtr-side { animation: none; }
 @media (prefers-reduced-motion: reduce) { .videoPlayerContainer, .videoOsdBottom { transition: none; } }
+
+/* phone or small tablet held upright: the sidebar is a sheet along the bottom; the video moves up above it */
+@media (max-width: 899px) and (orientation: portrait) {
+  .cmtr-side { top: auto; left: 0; right: 0; bottom: 0; width: 100%; height: 58vh; height: 58dvh; border-radius: 26px 26px 0 0; padding-bottom: env(safe-area-inset-bottom, 0px); animation-name: cmtr-up; }
+  @keyframes cmtr-up { from { opacity: 0.4; transform: translateY(30px); } }
+}
+html.cmtr-squeeze-bottom .videoPlayerContainer { bottom: 58vh !important; bottom: 58dvh !important; }
+html.cmtr-squeeze-bottom .videoOsdBottom, html.cmtr-squeeze-bottom .upNextContainer { bottom: 58vh !important; bottom: 58dvh !important; }
+.videoPlayerContainer, .videoOsdBottom { transition: right 0.28s var(--c-ease), bottom 0.28s var(--c-ease); }
+
+/* phone held sideways: the sidebar runs edge to edge on the right, narrower, and the video sits beside it */
+@media (max-width: 899px) and (orientation: landscape) {
+  .cmtr-side { top: 0; right: 0; bottom: 0; width: min(360px, 44vw); border-radius: 0; padding-right: env(safe-area-inset-right, 0px); }
+  .cmtr-side-head { padding: 12px 14px 8px; }
+  html.cmtr-squeeze .videoPlayerContainer,
+  html.cmtr-squeeze .videoOsdBottom,
+  html.cmtr-squeeze .skinHeader.osdHeader,
+  html.cmtr-squeeze .upNextContainer { right: min(360px, 44vw) !important; }
+}
+
+/* short screens (a phone sideways): the live panel is small and tucked into the top corner */
+@media (max-height: 560px) and (orientation: landscape) {
+  .cmtr-corner { top: max(10px, env(safe-area-inset-top, 0px)); right: calc(10px + env(safe-area-inset-right, 0px)); width: min(270px, 38vw); }
+  .cmtr-mini { padding: 5px 6px 5px; gap: 2px; border-radius: 18px; }
+  .cmtr-mini-head .cmtr-icon { width: 24px; height: 24px; }
+  .cmtr-mini-label { font-size: 11.5px; }
+  .cmtr-mini-item { font-size: 12.5px; line-height: 17px; padding: 3px 6px; -webkit-line-clamp: 2; }
+  .cmtr-mini-item:not(:nth-last-child(-n+2)) { display: none; }
+  .cmtr-mini-compose .cmtr-compose { padding: 4px 4px 4px 6px; border-radius: 14px; }
+  .cmtr-mini-compose .cmtr-input { font-size: 12.5px; min-height: 22px; padding: 2px 4px; }
+}
 
 /* ------------------------------------------------- second screen (companion) -- */
 .cmtr-pillwrap { position: fixed; z-index: 2147482990; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);

@@ -283,6 +283,14 @@
       return b;
     },
 
+    // bottom edge of the player's top bar (back button, title), or 0 when it's hidden
+    headerBottom: function () {
+      var h = document.querySelector('.skinHeader.osdHeader');
+      if (!h || h.classList.contains('osdHeader-hidden') || h.classList.contains('hide')) return 0;
+      var r = h.getBoundingClientRect();
+      return r.height > 0 && r.bottom > 0 ? r.bottom : 0;
+    },
+
     controlsTop: function () {
       var osd = document.querySelector('.videoOsdBottom .osdControls') || document.querySelector('.videoOsdBottom');
       return osd ? osd.getBoundingClientRect().top : null;

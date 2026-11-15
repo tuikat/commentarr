@@ -263,7 +263,7 @@
     var pin = S.pinNow == null ? defaultPin() : S.pinNow;
     var reply = S.replyTo && S.comments.find(function (c) { return c.id === S.replyTo; });
     var name = S.me ? esc(S.me.name) : '';
-    return '<form class="cmtr-compose" data-where="' + where + '">' +
+    return '<form class="cmtr-compose' + (S.drafts[where] ? ' has-text' : '') + '" data-where="' + where + '">' +
       (reply ? '<div class="cmtr-replying"><span>Replying to ' + esc(reply.author.name) + '</span><button type="button" data-cancel-reply>Cancel</button></div>' : '') +
       '<textarea class="cmtr-input" rows="1" maxlength="1000" placeholder="' + (S.me && S.me.canPost === false ? 'Commenting is turned off for you' : 'Comment as ' + name + '…') + '" aria-label="Write a comment"' + (S.me && S.me.canPost === false ? ' disabled' : '') + '>' + esc(S.drafts[where] || '') + '</textarea>' +
       '<div class="cmtr-compose-bar">' +
@@ -306,7 +306,7 @@
     }
 
     if (mode === 'sidebar') renderSide(); else removeSide();
-    squeeze(mode === 'sidebar' && !comp && window.innerWidth >= 900);
+    squeeze(mode === 'sidebar' && !comp);
     if (S.menuOpen) renderMenu();
   }
 
@@ -362,8 +362,14 @@
 
   // On a wide screen the sidebar sits beside the picture instead of over it: the player shrinks
   // to the space on the left (the video keeps its aspect ratio), and springs back when it closes.
-  function squeeze(on) { document.documentElement.classList.toggle('cmtr-squeeze', !!on); }
-  window.addEventListener('resize', function () { if (S.mode === 'sidebar' && side && !(A.companion && A.companion())) squeeze(window.innerWidth >= 900); });
+  // Wide screens and phones held sideways: the sidebar sits on the right and the video shrinks to
+  // the left of it. Phones held upright: it's a sheet along the bottom and the video moves up above it.
+  function squeeze(on) {
+    var wide = window.innerWidth >= 900 || window.innerWidth > window.innerHeight;
+    document.documentElement.classList.toggle('cmtr-squeeze', !!on && wide);
+    document.documentElement.classList.toggle('cmtr-squeeze-bottom', !!on && !wide);
+  }
+  window.addEventListener('resize', function () { if (S.mode === 'sidebar' && side && !(A.companion && A.companion())) squeeze(true); });
 
   // ------------------------------------------------- the live panel --
   // Up to four comments, like a live chat replay:
@@ -506,7 +512,7 @@
       body: body, posMs: pinned ? Math.round(S.posMs) : null, runtimeMs: S.media.runtimeMs || null, parentId: S.replyTo, spoiler: spoiler,
     }).then(function (c) {
       c = clean(c);
-      ta.value = ''; S.drafts = {}; S.replyTo = null; S.pinNow = null; S.spoilNow = false;
+      ta.value = ''; form.classList.remove('has-text'); S.drafts = {}; S.replyTo = null; S.pinNow = null; S.spoilNow = false;
       if (!S.comments.some(function (x) { return x.id === c.id; })) { c.isNew = true; S.comments.unshift(c); }
       // A comment pinned to now belongs in the live panel straight away.
       S.miniKey = null; quiet.since = 0;
@@ -527,13 +533,13 @@
   root.addEventListener('keypress', function (e) { if (e.target.matches && e.target.matches('textarea, input')) e.stopPropagation(); }, true);
   root.addEventListener('input', function (e) {
     if (!e.target.matches('textarea')) return;
-    var f = e.target.closest('form.cmtr-compose'); if (f) S.drafts[f.getAttribute('data-where')] = e.target.value;
+    var f = e.target.closest('form.cmtr-compose'); if (f) { S.drafts[f.getAttribute('data-where')] = e.target.value; f.classList.toggle('has-text', !!e.target.value.trim()); }
     e.target.style.height = 'auto'; e.target.style.height = Math.min(140, e.target.scrollHeight) + 'px';
   });
   // Tapping a composer chip (Spoiler, At 12:34) must not take focus from the text box: on a phone
   // that would close the keyboard and let the panel redraw the composer.
   ['mousedown', 'pointerdown'].forEach(function (t) {
-    root.addEventListener(t, function (e) { if (e.target.closest && e.target.closest('.cmtr-compose [data-spoil], .cmtr-compose [data-pin]')) e.preventDefault(); });
+    root.addEventListener(t, function (e) { if (e.target.closest && e.target.closest('.cmtr-compose [data-spoil], .cmtr-compose [data-pin], .cmtr-compose [type=submit]')) e.preventDefault(); });
   });
 
   function focusComposer() { setTimeout(function () { var ta = root.querySelector('form.cmtr-compose textarea'); if (ta) ta.focus(); }, 30); }
@@ -620,6 +626,12 @@
     fab.classList.toggle('is-idle', !(S.menuOpen || controls || typing));
   }
 
+  function placeCorner() {
+    var hb = window.innerHeight < 560 && A.controlsVisible() && A.headerBottom ? A.headerBottom() : 0;
+    var top = hb ? Math.round(hb + 6) + 'px' : '';
+    if (corner.style.top !== top) corner.style.top = top;
+  }
+
   var lastKey = null, lastRender = 0;
   function tick() {
     var v = A.getVideo();
@@ -649,6 +661,7 @@
       }
     }, function () { });
     if (S.mode === 'overlay') renderMini();
+    placeCorner();
     // keep the "At 18:32" chip and the Now marker moving, without re-rendering every frame
     if (Date.now() - lastRender > 1000) { lastRender = Date.now(); if (side) remoteBar(); if ((S.mode === 'sidebar' || (A.companion && A.companion())) && side && !side.contains(document.activeElement)) renderSide(); else if (side) { var chip = side.querySelector('[data-pin]'); if (chip) chip.textContent = 'At ' + clock(S.posMs); } var cc = corner.querySelector('[data-pin]'); if (cc) cc.textContent = 'At ' + clock(S.posMs); }
   }

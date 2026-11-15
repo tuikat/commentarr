@@ -1,8 +1,16 @@
+<img src="images/icon-square.png" alt="" width="96" align="right">
+
 # Commentarr
 
 **Shared, timestamped comments for Jellyfin.** Watch something on your own server and see what everyone else said at that exact moment: the cameo at 1:02:10, the jump scare at 18:25, the ending people argue about.
 
 Your library stays yours. Commentarr only knows *which title* you're watching (by its TMDB / TVDB / IMDb id) and what you wrote. Every Commentarr server joins the same conversation on **[comments.forester.dev](https://comments.forester.dev)**, so a comment written on one person's server shows up for everyone watching that film or episode, on any server, whatever version of the file they have.
+
+**Add it to Jellyfin** (Dashboard → Plugins → Repositories → +):
+
+```
+https://raw.githubusercontent.com/tuikat/commentarr/main/manifest.json
+```
 
 > **Jellyfin 10.11** is supported and tested. A **Plex** userscript is included as an experiment (see below).
 

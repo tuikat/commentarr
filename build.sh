@@ -16,10 +16,11 @@ ZIP="dist/commentarr_${VER}.zip"
 rm -f "$ZIP"
 STAGE=$(mktemp -d)
 cp build/Jellyfin.Plugin.Commentarr.dll "$STAGE/"
+cp images/icon.png "$STAGE/thumb.png"
 cat > "$STAGE/meta.json" <<JSON
-{"category":"General","changelog":"See https://github.com/tuikat/commentarr/releases","description":"Shared, timestamped comments in the player.","guid":"7eb6fc71-dd42-48bb-bed9-cca916e7b848","name":"Commentarr","overview":"See what everyone else said at this exact moment.","owner":"tuikat","targetAbi":"10.11.0.0","timestamp":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","version":"$VER","status":"Active","autoUpdate":true,"assemblies":["Jellyfin.Plugin.Commentarr.dll"]}
+{"category":"General","changelog":"See https://github.com/tuikat/commentarr/releases","description":"Shared, timestamped comments in the player.","guid":"7eb6fc71-dd42-48bb-bed9-cca916e7b848","name":"Commentarr","overview":"See what everyone else said at this exact moment.","owner":"tuikat","targetAbi":"10.11.0.0","timestamp":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","version":"$VER","status":"Active","autoUpdate":true,"imagePath":"thumb.png","assemblies":["Jellyfin.Plugin.Commentarr.dll"]}
 JSON
-(cd "$STAGE" && zip -qj - Jellyfin.Plugin.Commentarr.dll meta.json) > "$ZIP"
+(cd "$STAGE" && zip -qj - Jellyfin.Plugin.Commentarr.dll meta.json thumb.png) > "$ZIP"
 rm -rf "$STAGE"
 echo "built $ZIP  md5 $(md5sum "$ZIP" | cut -d' ' -f1)"
 if [ "${1:-}" = install ]; then

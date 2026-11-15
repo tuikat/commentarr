@@ -33,6 +33,8 @@ Tap the comments button in the player controls for three choices:
 
 **Watching on a TV.** TV apps (Android TV, Roku, Apple TV, webOS…) can't show the panel themselves, so use your phone as a second screen. Open Jellyfin on your phone in the browser or the Jellyfin app while something plays on your TV, and a **Comments** pill appears at the bottom. Tap it for the full comment panel, following the TV to within a fraction of a second. Pinned comments arrive as the TV reaches them, posting pins to the TV's moment, tapping a time jumps the TV there, and **Play/Pause** controls it. With more than one device playing, tap the device name to switch.
 
+**Comments as subtitles.** Films and episodes also get a subtitle track called **Comments**. Pick it in any app's subtitle menu, TV apps included, and comments pinned to moments appear as subtitles at their moment (two at a time at most). The track is built fresh each time playback starts, so comments posted while you watch show up the next time. Most TV apps show one subtitle track at a time, so it replaces dialogue subtitles while it's on. Server admins can turn the track off, and choose to leave spoilers out of it, in the plugin settings.
+
 **Different cuts.** Comments remember the length of the file they were written on. If yours is a different cut (extended, theatrical…), pinned comments say so, since their moment might not line up.
 
 ## Moderation (for Jellyfin admins)
@@ -41,7 +43,7 @@ Tap the comments button in the player controls for three choices:
 
 | Tab | What you can do |
 | --- | --- |
-| Connection | Comment server address, the name other servers see for yours, turn the button off |
+| Connection | Comment server address, the name other servers see for yours, turn the button off, the Comments subtitle track (on by default) and whether spoilers are left out of it (off by default) |
 | Reports | Comments your users reported, and your users' comments that anyone reported. **Hide** removes a comment for everyone on your server; **Delete** removes your own users' comments everywhere; **Block** hides everything from an outside person for your server |
 | People | Your users who have commented; **ban** someone from commenting |
 | Banned words | Your users can't post them, and other servers' comments containing them are hidden from your users |

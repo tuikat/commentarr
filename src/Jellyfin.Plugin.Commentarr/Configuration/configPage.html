@@ -45,6 +45,14 @@
       <div class="checkboxContainer">
         <label><input is="emby-checkbox" type="checkbox" id="Enabled"><span>Show the comments button in the player</span></label>
       </div>
+      <div class="checkboxContainer checkboxContainer-withDescription">
+        <label><input is="emby-checkbox" type="checkbox" id="SubtitleTrack"><span>Offer a "Comments" subtitle track</span></label>
+        <div class="fieldDescription checkboxFieldDescription">For apps that can't show the comments panel, like TV apps: comments pinned to moments appear as subtitles when your users pick the Comments track. Picking it replaces dialogue subtitles on most TV apps.</div>
+      </div>
+      <div class="checkboxContainer checkboxContainer-withDescription">
+        <label><input is="emby-checkbox" type="checkbox" id="SubtitleHideSpoilers"><span>Leave spoilers out of the Comments track</span></label>
+        <div class="fieldDescription checkboxFieldDescription">Subtitles can't be tapped to reveal, so comments marked as spoilers show with a [Spoiler] tag unless this is on.</div>
+      </div>
       <button is="emby-button" type="submit" class="raised button-submit block emby-button"><span>Save</span></button>
       <button is="emby-button" type="button" id="cmReregister" class="raised button-cancel block emby-button"><span>Reconnect to the comment server</span></button>
     </form>
@@ -149,6 +157,8 @@
       $('#ServerUrl').value = c.ServerUrl || 'https://comments.forester.dev';
       $('#DisplayName').value = c.DisplayName || '';
       $('#Enabled').checked = c.Enabled !== false;
+      $('#SubtitleTrack').checked = c.SubtitleTrack !== false;
+      $('#SubtitleHideSpoilers').checked = c.SubtitleHideSpoilers === true;
       Dashboard.hideLoadingMsg();
       status();
     });
@@ -161,6 +171,8 @@
       c.ServerUrl = $('#ServerUrl').value.trim().replace(/\/+$/, '') || 'https://comments.forester.dev';
       c.DisplayName = $('#DisplayName').value.trim();
       c.Enabled = $('#Enabled').checked;
+      c.SubtitleTrack = $('#SubtitleTrack').checked;
+      c.SubtitleHideSpoilers = $('#SubtitleHideSpoilers').checked;
       ApiClient.updatePluginConfiguration(pluginId, c).then(function (r) { auth = null; Dashboard.processPluginConfigurationUpdateResult(r); status(); });
     });
     return false;

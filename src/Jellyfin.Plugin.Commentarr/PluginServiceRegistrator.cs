@@ -18,6 +18,9 @@ public class PluginServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.AddSingleton<PlaybackClock>();
         serviceCollection.AddHostedService(sp => sp.GetRequiredService<PlaybackClock>());
         serviceCollection.AddSingleton<IStartupFilter, ReportStampStartupFilter>();
+        // The "Comments" subtitle track for TV apps.
+        serviceCollection.AddSingleton<CommentSubtitles>();
+        serviceCollection.AddSingleton<IStartupFilter, PlaybackInfoStartupFilter>();
         // Adds the player script to jellyfin-web's index.html as it is served; nothing on disk changes.
         serviceCollection.AddSingleton<IStartupFilter, ScriptInjectionStartupFilter>();
     }

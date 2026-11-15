@@ -29,6 +29,7 @@
     sort: pref('sort', 'top'),           // top | new
     spoilers: pref('spoilers', false),   // also blur comments pinned ahead of you (and from later episodes)
     menuOpen: false, replyTo: null, pinNow: null, spoilNow: false, revealed: {},
+    drafts: {},                        // what's typed in each composer, so a re-render never loses it
     miniKey: null,
     es: null, posMs: 0, error: '',
   };
@@ -264,7 +265,7 @@
     var name = S.me ? esc(S.me.name) : '';
     return '<form class="cmtr-compose" data-where="' + where + '">' +
       (reply ? '<div class="cmtr-replying"><span>Replying to ' + esc(reply.author.name) + '</span><button type="button" data-cancel-reply>Cancel</button></div>' : '') +
-      '<textarea class="cmtr-input" rows="1" maxlength="1000" placeholder="' + (S.me && S.me.canPost === false ? 'Commenting is turned off for you' : 'Comment as ' + name + '…') + '" aria-label="Write a comment"' + (S.me && S.me.canPost === false ? ' disabled' : '') + '></textarea>' +
+      '<textarea class="cmtr-input" rows="1" maxlength="1000" placeholder="' + (S.me && S.me.canPost === false ? 'Commenting is turned off for you' : 'Comment as ' + name + '…') + '" aria-label="Write a comment"' + (S.me && S.me.canPost === false ? ' disabled' : '') + '>' + esc(S.drafts[where] || '') + '</textarea>' +
       '<div class="cmtr-compose-bar">' +
         '<span class="cmtr-chips">' +
           (reply ? '' : '<button type="button" class="cmtr-chip" data-pin aria-pressed="' + pin + '" title="Show this comment at this moment for everyone">At ' + clock(S.posMs) + '</button>') +
@@ -505,7 +506,7 @@
       body: body, posMs: pinned ? Math.round(S.posMs) : null, runtimeMs: S.media.runtimeMs || null, parentId: S.replyTo, spoiler: spoiler,
     }).then(function (c) {
       c = clean(c);
-      ta.value = ''; S.replyTo = null; S.pinNow = null; S.spoilNow = false;
+      ta.value = ''; S.drafts = {}; S.replyTo = null; S.pinNow = null; S.spoilNow = false;
       if (!S.comments.some(function (x) { return x.id === c.id; })) { c.isNew = true; S.comments.unshift(c); }
       // A comment pinned to now belongs in the live panel straight away.
       S.miniKey = null; quiet.since = 0;
@@ -524,7 +525,16 @@
   }, true);
   root.addEventListener('keyup', function (e) { if (e.target.matches && e.target.matches('textarea, input')) e.stopPropagation(); }, true);
   root.addEventListener('keypress', function (e) { if (e.target.matches && e.target.matches('textarea, input')) e.stopPropagation(); }, true);
-  root.addEventListener('input', function (e) { if (e.target.matches('textarea')) { e.target.style.height = 'auto'; e.target.style.height = Math.min(140, e.target.scrollHeight) + 'px'; } });
+  root.addEventListener('input', function (e) {
+    if (!e.target.matches('textarea')) return;
+    var f = e.target.closest('form.cmtr-compose'); if (f) S.drafts[f.getAttribute('data-where')] = e.target.value;
+    e.target.style.height = 'auto'; e.target.style.height = Math.min(140, e.target.scrollHeight) + 'px';
+  });
+  // Tapping a composer chip (Spoiler, At 12:34) must not take focus from the text box: on a phone
+  // that would close the keyboard and let the panel redraw the composer.
+  ['mousedown', 'pointerdown'].forEach(function (t) {
+    root.addEventListener(t, function (e) { if (e.target.closest && e.target.closest('.cmtr-compose [data-spoil], .cmtr-compose [data-pin]')) e.preventDefault(); });
+  });
 
   function focusComposer() { setTimeout(function () { var ta = root.querySelector('form.cmtr-compose textarea'); if (ta) ta.focus(); }, 30); }
 

@@ -23,4 +23,13 @@ public class PluginConfiguration : BasePluginConfiguration
 
     /// <summary>Show the comments button in the player.</summary>
     public bool Enabled { get; set; } = true;
+
+    /// <summary>Offer a "Comments" subtitle track on films and episodes, for apps that can't show the panel (TV apps).</summary>
+    public bool SubtitleTrack { get; set; } = true;
+
+    /// <summary>Leave comments marked as spoilers out of the subtitle track (otherwise they show with a [Spoiler] tag).</summary>
+    public bool SubtitleHideSpoilers { get; set; } = false;
+
+    /// <summary>Set automatically. Signs subtitle links so TV apps can fetch them without a login header.</summary>
+    public string SubtitleSecret { get; set; } = string.Empty;
 }

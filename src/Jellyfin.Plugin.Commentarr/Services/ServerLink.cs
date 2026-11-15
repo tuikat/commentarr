@@ -125,6 +125,22 @@ public sealed class ServerLink
         return ((int)res.StatusCode, await res.Content.ReadAsStringAsync(ct).ConfigureAwait(false));
     }
 
+    /// <summary>Every visible comment on a title, as the given user sees them (their server's blocks and words applied).</summary>
+    public async Task<JsonElement> CommentsAsync(string token, IEnumerable<string> ids, CancellationToken ct)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Get, ServerUrl + "/api/v1/comments?sort=new&ids=" + Uri.EscapeDataString(string.Join(",", ids)));
+        req.Headers.TryAddWithoutValidation("Authorization", "Bearer " + token);
+        using var res = await Client().SendAsync(req, ct).ConfigureAwait(false);
+        var body = await res.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+        if (!res.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException(ErrorOf(body, (int)res.StatusCode));
+        }
+
+        using var doc = JsonDocument.Parse(body);
+        return doc.RootElement.Clone();
+    }
+
     private static string ErrorOf(string body, int status)
     {
         try

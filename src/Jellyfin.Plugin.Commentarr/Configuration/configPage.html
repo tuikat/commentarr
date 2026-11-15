@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Commentarr</title></head>
+<body>
+<div id="CommentarrConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-checkbox,emby-textarea">
+<div data-role="content">
+<div class="content-primary">
+  <style>
+    #CommentarrConfigPage .cm-tabs { display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px; background: rgba(255,255,255,.08); margin: .5em 0 1.5em; flex-wrap: wrap; }
+    #CommentarrConfigPage .cm-tabs button { border: 0; background: none; color: inherit; opacity: .72; font: inherit; font-weight: 600; padding: .5em 1.1em; border-radius: 999px; cursor: pointer; }
+    #CommentarrConfigPage .cm-tabs button[aria-selected="true"] { background: rgba(255,255,255,.16); opacity: 1; }
+    #CommentarrConfigPage .cm-list { list-style: none; padding: 0; margin: 0; }
+    #CommentarrConfigPage .cm-list li { background: rgba(255,255,255,.05); border-radius: 14px; padding: 12px 14px; margin-bottom: 8px; }
+    #CommentarrConfigPage .cm-body { white-space: pre-wrap; word-break: break-word; }
+    #CommentarrConfigPage .cm-meta { opacity: .65; font-size: .88em; margin-top: 4px; }
+    #CommentarrConfigPage .cm-acts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+    #CommentarrConfigPage .cm-acts button { margin: 0; }
+    #CommentarrConfigPage .cm-status { padding: 10px 14px; border-radius: 12px; background: rgba(255,255,255,.05); margin-bottom: 1em; }
+    #CommentarrConfigPage .cm-err { color: #ff8a80; }
+  </style>
+
+  <h2 class="sectionTitle">Commentarr</h2>
+  <p class="fieldDescription">Shared, timestamped comments in the player. Comments are stored on a comment server shared by every Commentarr install: the public one at comments.forester.dev unless you run your own.</p>
+
+  <div class="cm-tabs" role="tablist">
+    <button type="button" data-tab="connection" aria-selected="true">Connection</button>
+    <button type="button" data-tab="reports">Reports</button>
+    <button type="button" data-tab="people">People</button>
+    <button type="button" data-tab="words">Banned words</button>
+  </div>
+
+  <div data-panel="connection">
+    <div class="cm-status" id="cmStatus">Checking connection…</div>
+    <form id="CommentarrConfigForm">
+      <div class="inputContainer">
+        <label class="inputLabel inputLabelUnfocused" for="ServerUrl">Comment server</label>
+        <input is="emby-input" type="url" id="ServerUrl" required>
+        <div class="fieldDescription">Leave as https://comments.forester.dev to join everyone else. Point it at your own commentarr-server for a private one. Changing it starts a fresh connection.</div>
+      </div>
+      <div class="inputContainer">
+        <label class="inputLabel inputLabelUnfocused" for="DisplayName">Server name shown to others</label>
+        <input is="emby-input" type="text" id="DisplayName" maxlength="32">
+        <div class="fieldDescription">Shown after your users' names on other servers. Empty uses this Jellyfin server's name.</div>
+      </div>
+      <div class="checkboxContainer">
+        <label><input is="emby-checkbox" type="checkbox" id="Enabled"><span>Show the comments button in the player</span></label>
+      </div>
+      <button is="emby-button" type="submit" class="raised button-submit block emby-button"><span>Save</span></button>
+      <button is="emby-button" type="button" id="cmReregister" class="raised button-cancel block emby-button"><span>Reconnect to the comment server</span></button>
+    </form>
+  </div>
+
+  <div data-panel="reports" hidden>
+    <p class="fieldDescription">Comments your users reported, and comments by your users that anyone reported. Hide removes a comment for everyone on this server; Delete removes one of your own users' comments everywhere.</p>
+    <ul class="cm-list" id="cmReports"></ul>
+  </div>
+
+  <div data-panel="people" hidden>
+    <p class="fieldDescription">Your users who have commented. Banning stops someone posting; their past comments stay unless you delete them.</p>
+    <ul class="cm-list" id="cmPeople"></ul>
+  </div>
+
+  <div data-panel="words" hidden>
+    <p class="fieldDescription">One word or phrase per line. Your users can't post comments containing them, and comments from other servers that contain them are hidden from your users. The comment server also keeps its own list.</p>
+    <textarea is="emby-textarea" id="cmWords" rows="12"></textarea>
+    <button is="emby-button" type="button" id="cmSaveWords" class="raised button-submit block emby-button"><span>Save banned words</span></button>
+    <p class="fieldDescription" id="cmWordsMsg"></p>
+  </div>
+</div>
+</div>
+
+<script type="text/javascript">
+(function () {
+  var pluginId = '7eb6fc71-dd42-48bb-bed9-cca916e7b848';
+  var page = document.querySelector('#CommentarrConfigPage');
+  var $ = function (s) { return page.querySelector(s); };
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  var auth = null;
+
+  function jf(method, path) {
+    return fetch(ApiClient.getUrl(path), { method: method, headers: { Authorization: 'MediaBrowser Token="' + ApiClient.accessToken() + '"' } })
+      .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || r.status); return j; }); });
+  }
+  function token() {
+    if (auth && auth.exp - Date.now() > 60000) return Promise.resolve(auth);
+    return jf('GET', 'Commentarr/Token').then(function (t) { auth = t; return t; });
+  }
+  function cm(method, path, body) {
+    return token().then(function (t) {
+      return fetch(t.serverUrl + '/api/v1' + path, { method: method, headers: { Authorization: 'Bearer ' + t.token, 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined })
+        .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || r.status); return j; }); });
+    });
+  }
+
+  function status() {
+    jf('GET', 'Commentarr/Status').then(function (s) {
+      $('#cmStatus').innerHTML = s.registered ? 'Connected to <b>' + esc(s.serverUrl) + '</b>.' : 'Not connected yet. It connects the first time someone opens a video, or press Reconnect.';
+    }, function (e) { $('#cmStatus').innerHTML = '<span class="cm-err">' + esc(e.message) + '</span>'; });
+  }
+
+  function load(tab) {
+    if (tab === 'reports') cm('GET', '/server/reports').then(function (rows) {
+      $('#cmReports').innerHTML = rows.length ? rows.map(function (r) {
+        return '<li><div class="cm-body">' + esc(r.body) + '</div><div class="cm-meta">' + esc(r.author) + ' · ' + esc(r.server_name) + ' · ' + esc(r.title) + ' · ' + r.reports + ' report' + (r.reports === 1 ? '' : 's') + (r.reasons ? ': ' + esc(r.reasons) : '') + (r.hiddenHere ? ' · hidden here' : '') + '</div>' +
+          '<div class="cm-acts">' +
+            (r.hiddenHere ? '<button is="emby-button" class="raised emby-button" data-act="comments/' + r.id + '/unhide">Unhide</button>' : '<button is="emby-button" class="raised emby-button" data-act="comments/' + r.id + '/hide">Hide on this server</button>') +
+            (r.ownUser ? '<button is="emby-button" class="raised emby-button" data-act="comments/' + r.id + '/delete" data-confirm="Delete this comment everywhere?">Delete everywhere</button>' : '<button is="emby-button" class="raised emby-button" data-act="users/' + r.user_id + '/block" data-confirm="Hide everything ' + esc(r.author) + ' writes, for this server?">Block person</button>') +
+            '<button is="emby-button" class="raised emby-button" data-act="comments/' + r.id + '/dismiss">Dismiss</button>' +
+          '</div></li>';
+      }).join('') : '<li>No reports. Nice.</li>';
+    }, showErr('#cmReports'));
+    if (tab === 'people') cm('GET', '/server/users').then(function (rows) {
+      $('#cmPeople').innerHTML = rows.length ? rows.map(function (u) {
+        return '<li><div class="cm-body">' + esc(u.name) + '</div><div class="cm-meta">' + u.comments + ' comment' + (u.comments === 1 ? '' : 's') + ' · last seen ' + new Date(u.last_seen).toLocaleDateString() + (u.banned ? ' · banned from commenting' : '') + '</div>' +
+          '<div class="cm-acts"><button is="emby-button" class="raised emby-button" data-act="users/' + u.id + '/' + (u.banned ? 'unban' : 'ban') + '">' + (u.banned ? 'Allow commenting' : 'Ban from commenting') + '</button></div></li>';
+      }).join('') : '<li>Nobody on this server has commented yet.</li>';
+    }, showErr('#cmPeople'));
+    if (tab === 'words') cm('GET', '/server/words').then(function (r) { $('#cmWords').value = r.words.join('\n'); }, showErr('#cmWordsMsg'));
+  }
+  function showErr(sel) { return function (e) { $(sel).innerHTML = '<li class="cm-err">' + esc(e.message) + '</li>'; }; }
+
+  page.addEventListener('click', function (e) {
+    var t = e.target.closest('[data-tab]');
+    if (t) {
+      page.querySelectorAll('[data-tab]').forEach(function (b) { b.setAttribute('aria-selected', b === t); });
+      page.querySelectorAll('[data-panel]').forEach(function (p) { p.hidden = p.getAttribute('data-panel') !== t.getAttribute('data-tab'); });
+      if (t.getAttribute('data-tab') !== 'connection') load(t.getAttribute('data-tab'));
+    }
+    var a = e.target.closest('[data-act]');
+    if (a) {
+      if (a.dataset.confirm && !confirm(a.dataset.confirm)) return;
+      var path = a.getAttribute('data-act');
+      cm('POST', '/server/' + path).then(function () { load(path.indexOf('users/') === 0 && !a.closest('#cmReports') ? 'people' : 'reports'); }, function (err) { Dashboard.alert(err.message); });
+    }
+  });
+
+  $('#cmSaveWords').addEventListener('click', function () {
+    cm('PUT', '/server/words', { words: $('#cmWords').value.split('\n') }).then(function (r) { $('#cmWords').value = r.words.join('\n'); $('#cmWordsMsg').textContent = 'Saved ' + r.words.length + ' entr' + (r.words.length === 1 ? 'y' : 'ies') + '.'; }, function (e) { $('#cmWordsMsg').textContent = e.message; });
+  });
+
+  $('#cmReregister').addEventListener('click', function () {
+    Dashboard.showLoadingMsg();
+    jf('POST', 'Commentarr/Register').then(function () { auth = null; status(); }, function (e) { Dashboard.alert(e.message); }).then(function () { Dashboard.hideLoadingMsg(); });
+  });
+
+  page.addEventListener('pageshow', function () {
+    Dashboard.showLoadingMsg();
+    ApiClient.getPluginConfiguration(pluginId).then(function (c) {
+      $('#ServerUrl').value = c.ServerUrl || 'https://comments.forester.dev';
+      $('#DisplayName').value = c.DisplayName || '';
+      $('#Enabled').checked = c.Enabled !== false;
+      Dashboard.hideLoadingMsg();
+      status();
+    });
+  });
+
+  $('#CommentarrConfigForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    Dashboard.showLoadingMsg();
+    ApiClient.getPluginConfiguration(pluginId).then(function (c) {
+      c.ServerUrl = $('#ServerUrl').value.trim().replace(/\/+$/, '') || 'https://comments.forester.dev';
+      c.DisplayName = $('#DisplayName').value.trim();
+      c.Enabled = $('#Enabled').checked;
+      ApiClient.updatePluginConfiguration(pluginId, c).then(function (r) { auth = null; Dashboard.processPluginConfigurationUpdateResult(r); status(); });
+    });
+    return false;
+  });
+})();
+</script>
+</div>
+</body>
+</html>

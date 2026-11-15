@@ -66,6 +66,10 @@ Plex has no plugin system for its web player, so Commentarr for Plex is a **user
 
 It is unverified, so reports and fixes are welcome.
 
+## Other Jellyfin apps
+
+App developers can add Commentarr natively: any app signed in to Jellyfin gets a comment token from this plugin and talks to the comment server directly. See the [API reference](https://github.com/tuikat/commentarr-server/blob/main/docs/API.md).
+
 ## Your own comment server?
 
 Almost everyone should stay on **comments.forester.dev**: that's where everyone else's comments are, and a comment section is only as good as the people in it. If you need a **private** space (a family or friends group that doesn't want to mix with the public), run [commentarr-server](https://github.com/tuikat/commentarr-server) and change *Comment server* in the plugin settings.

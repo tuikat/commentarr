@@ -29,7 +29,7 @@
     sort: pref('sort', 'top'),           // top | new
     spoilers: pref('spoilers', false),   // hide pinned comments you haven't reached yet
     menuOpen: false, replyTo: null, pinNow: null, revealed: {},
-    featured: { shown: {}, lastAt: 0, el: null, timer: null },
+    miniKey: null,
     es: null, posMs: 0, error: '',
   };
 
@@ -93,17 +93,34 @@
   var side = null;
   root.appendChild(fab); root.appendChild(menu); root.appendChild(corner);
 
-  fab.addEventListener('click', function (e) { e.stopPropagation(); S.menuOpen = !S.menuOpen; renderMenu(); });
-  document.addEventListener('click', function (e) { if (S.menuOpen && !menu.contains(e.target) && e.target !== fab) { S.menuOpen = false; renderMenu(); } closePop(e); }, true);
+  // The host's own control-row button when the adapter can provide one; the floating button otherwise.
+  var hostBtn = null;
+  function toggleMenu(e) { e.preventDefault(); e.stopPropagation(); S.menuOpen = !S.menuOpen; renderMenu(); }
+  fab.addEventListener('click', toggleMenu);
+  document.addEventListener('click', function (e) {
+    if (S.menuOpen && !menu.contains(e.target) && e.target !== fab && !(hostBtn && hostBtn.contains(e.target))) { S.menuOpen = false; renderMenu(); }
+    closePop(e);
+  }, true);
+
+  function trigger() { return hostBtn && hostBtn.isConnected ? hostBtn : fab; }
+
+  function placeMenu() {
+    var t = trigger();
+    if (t === fab) { menu.style.right = ''; return; }
+    var r = t.getBoundingClientRect();
+    menu.style.bottom = Math.max(12, window.innerHeight - r.top + 10) + 'px';
+    menu.style.right = Math.max(12, Math.min(window.innerWidth - 248, window.innerWidth - r.right - 8)) + 'px';
+  }
 
   function renderMenu() {
     menu.hidden = !S.menuOpen;
-    fab.setAttribute('aria-expanded', S.menuOpen);
+    trigger().setAttribute('aria-expanded', S.menuOpen);
     if (!S.menuOpen) return;
+    placeMenu();
     var n = S.comments.length;
     var opt = function (mode, label, sub) { return '<button type="button" role="menuitemradio" aria-checked="' + (S.mode === mode) + '" data-mode="' + mode + '"><span>' + label + '<small>' + sub + '</small></span></button>'; };
     menu.innerHTML = '<div class="cmtr-menu-head">' + (S.media ? (n === 1 ? '1 comment' : n + ' comments') + ' on this ' + (S.media.ids[0].indexOf('movie/') === 0 ? 'film' : 'episode') : 'Comments') + '</div>' +
-      opt('overlay', 'Overlay', 'Moments pop up in the corner') +
+      opt('overlay', 'Overlay', 'A small live panel in the corner') +
       opt('sidebar', 'Sidebar', 'Every comment, beside the video') +
       opt('off', 'Off', 'Hide comments while watching');
   }
@@ -214,15 +231,25 @@
   function render() {
     if (!root.isConnected) return;
     var playing = !!A.getVideo();
-    fab.style.display = playing ? '' : 'none';
+    fab.style.display = playing && !(hostBtn && hostBtn.isConnected) ? '' : 'none';
     if (!playing) { corner.innerHTML = ''; removeSide(); return; }
 
-    // overlay: the corner shows featured moments and a compact composer
+    // overlay: a small, always-on panel of the latest moments, with a one-line composer
     if (S.mode === 'overlay') {
       removeSide();
-      if (!corner.querySelector('.cmtr-corner-bar')) {
-        corner.innerHTML = '<div class="cmtr-slot"></div><div class="cmtr-corner-bar"><button type="button" class="cmtr-btn ghost" data-open-compose>Comment</button><button type="button" class="cmtr-btn ghost" data-mode-to="sidebar">All comments</button></div>';
+      if (!corner.querySelector('.cmtr-mini')) {
+        corner.innerHTML =
+          '<section class="cmtr-mini" aria-label="Comments">' +
+            '<header class="cmtr-mini-head"><span class="cmtr-mini-label"></span>' +
+              '<button type="button" class="cmtr-icon" data-mode-to="sidebar" aria-label="Show all comments" title="All comments"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M9.5 2.5h4v4M13.5 2.5 9 7M6.5 13.5h-4v-4M2.5 13.5 7 9"/></svg></button>' +
+              '<button type="button" class="cmtr-icon" data-mode-to="off" aria-label="Hide comments" title="Hide">' + ICON.x + '</button></header>' +
+            '<div class="cmtr-mini-list" aria-live="polite"></div>' +
+            '<div class="cmtr-mini-compose"></div>' +
+          '</section>';
+        corner.querySelector('.cmtr-mini-compose').innerHTML = composerHtml('corner');
+        S.miniKey = null;
       }
+      renderMini();
     } else {
       corner.innerHTML = '';
     }
@@ -266,27 +293,43 @@
   }
   function removeSide() { if (side) { side.remove(); side = null; } }
 
-  // ------------------------------------------------- featured moments --
-  // One comment at a time: the best-liked pinned comment in the last ~20 s, shown ~6 s,
-  // never more often than every 15 s. That is the "featured" stream; the list has the rest.
-  function tickFeatured() {
-    if (S.mode !== 'overlay' || !S.media) return;
-    var F = S.featured, now = Date.now();
-    var slot = corner.querySelector('.cmtr-slot'); if (!slot) return;
-    if (F.el && now - F.el._at > 6500) { var old = F.el; old.classList.add('is-out'); setTimeout(function () { old.remove(); }, 400); F.el = null; }
-    if (F.el || now - F.lastAt < 15000) return;
-    var pick = null;
-    S.comments.forEach(function (c) {
-      if (c.parentId || c.posMs == null || F.shown[c.id] || differentCut(c)) return;
-      if (c.posMs > S.posMs + 500 || c.posMs < S.posMs - 20000) return;
-      if (!pick || c.likes > pick.likes || (c.likes === pick.likes && c.posMs > pick.posMs)) pick = c;
-    });
-    if (!pick) return;
-    F.shown[pick.id] = true; F.lastAt = now;
-    var el = h('div', 'cmtr-feature', '<div class="cmtr-who"><b>' + esc(pick.author.name) + '</b><span>' + clock(pick.posMs) + (pick.likes ? ' · ' + pick.likes + ' like' + (pick.likes === 1 ? '' : 's') : '') + '</span></div><div class="cmtr-body">' + linkify(pick.body) + '</div>');
-    el._at = now;
-    slot.appendChild(el);
-    F.el = el;
+  // ------------------------------------------------- the live panel --
+  // The four latest moments you've passed, oldest at the top, the newest sliding in at the bottom
+  // as you reach it, like a live chat replay. Before the first pinned moment it shows the top
+  // whole-title comments instead, so the panel is never empty when there is something to read.
+  var MINI_MAX = 4;
+  function miniPick() {
+    var tops = S.comments.filter(function (c) { return !c.parentId; });
+    var moments = tops.filter(function (c) { return c.posMs != null && !differentCut(c) && c.posMs <= S.posMs + 500; })
+      .sort(function (a, b) { return a.posMs - b.posMs || a.createdAt - b.createdAt; });
+    if (moments.length) return { label: 'At this point', items: moments.slice(-MINI_MAX) };
+    var general = tops.filter(function (c) { return c.posMs == null; })
+      .sort(function (a, b) { return b.likes - a.likes || b.createdAt - a.createdAt; }).slice(0, MINI_MAX);
+    return { label: general.length ? 'Top comments' : '', items: general };
+  }
+
+  function renderMini() {
+    var box = corner.querySelector('.cmtr-mini'); if (!box) return;
+    var n = S.comments.length;
+    var pick = miniPick();
+    box.querySelector('.cmtr-mini-label').textContent = 'Comments' + (n ? ' · ' + n : '') + (pick.label ? ' · ' + pick.label : '');
+    var key = pick.items.map(function (c) { return c.id + ':' + c.likes; }).join(',') + '|' + (S.error || '');
+    if (key === S.miniKey) return;
+    var before = {};
+    box.querySelectorAll('.cmtr-mini-item').forEach(function (el) { before[el.getAttribute('data-id')] = true; });
+    S.miniKey = key;
+    var list = box.querySelector('.cmtr-mini-list');
+    if (S.error) { list.innerHTML = '<p class="cmtr-mini-empty">' + esc(S.error) + '</p>'; return; }
+    if (!pick.items.length) {
+      list.innerHTML = '<p class="cmtr-mini-empty">' + (n ? 'Comments show up here as you reach their moment.' : 'No comments yet. Say something about this moment.') + '</p>';
+      return;
+    }
+    list.innerHTML = pick.items.map(function (c) {
+      return '<div class="cmtr-mini-item' + (before[c.id] ? '' : ' is-new') + '" data-id="' + c.id + '">' +
+        (c.posMs != null ? '<button type="button" class="cmtr-time" data-seek="' + c.posMs + '" aria-label="Jump to ' + clock(c.posMs) + '">' + clock(c.posMs) + '</button> ' : '') +
+        '<b>' + esc(c.author.name) + '</b> ' + linkify(c.body) +
+        (c.likes ? ' <span class="cmtr-mini-likes">' + c.likes + ' ♥</span>' : '') + '</div>';
+    }).join('');
   }
 
   // ------------------------------------------------------------ actions --
@@ -303,11 +346,6 @@
     if ((t = e.target.closest('[data-like]'))) { like(Number(t.getAttribute('data-like'))); return; }
     if ((t = e.target.closest('[data-more]'))) { e.stopPropagation(); openPop(t, Number(t.getAttribute('data-more'))); return; }
     if (e.target.closest('[data-rename]')) { rename(); return; }
-    if (e.target.closest('[data-open-compose]')) {
-      var bar = corner.querySelector('.cmtr-corner-bar');
-      if (!corner.querySelector('form')) { var w = h('div', '', composerHtml('corner')); corner.insertBefore(w.firstChild, bar); }
-      focusComposer();
-    }
   });
 
   root.addEventListener('submit', function (e) {
@@ -324,7 +362,8 @@
     }).then(function (c) {
       ta.value = ''; S.replyTo = null; S.pinNow = null;
       if (!S.comments.some(function (x) { return x.id === c.id; })) { c.isNew = true; S.comments.unshift(c); }
-      if (form.getAttribute('data-where') === 'corner') form.remove();
+      // A comment pinned to now belongs in the live panel straight away.
+      S.miniKey = null;
       render();
     }, function (x) { err.textContent = x.message; }).then(function () { btn.disabled = false; });
   });
@@ -398,19 +437,26 @@
 
   // ---------------------------------------------------------- main loop --
   function placeFab() {
+    // Prefer a button in the host's own control row; fall back to the floating one.
+    hostBtn = A.mountButton ? A.mountButton() : null;
+    if (hostBtn && !hostBtn._cmtr) { hostBtn._cmtr = true; hostBtn.addEventListener('click', toggleMenu); }
+    var typing = !!root.querySelector('form.cmtr-compose textarea:focus');
+    var controls = A.controlsVisible();
+    if (hostBtn && hostBtn.isConnected) {
+      fab.style.display = 'none';
+      hostBtn.classList.toggle('cmtr-on', S.mode !== 'off');
+      if (S.menuOpen) placeMenu();
+      return;
+    }
+    fab.style.display = '';
     var top = A.controlsTop && A.controlsTop();
     var phone = window.innerWidth <= 640;
     var bottom = top ? Math.max(phone ? 120 : 96, window.innerHeight - top + 14) : (phone ? 132 : 112);
     fab.style.bottom = bottom + 'px';
     menu.style.bottom = (bottom + 54) + 'px';
-    var typing = !!root.querySelector('form.cmtr-compose textarea:focus');
-    var controls = A.controlsVisible();
     // The sidebar has its own close button; the round button would sit on top of it.
     fab.style.visibility = S.mode === 'sidebar' ? 'hidden' : '';
     fab.classList.toggle('is-idle', !(S.menuOpen || controls || typing));
-    // In overlay mode only the featured moment stays up; its buttons come and go with the controls.
-    var bar = corner.querySelector('.cmtr-corner-bar');
-    if (bar) bar.style.visibility = controls || typing || corner.querySelector('form') ? '' : 'hidden';
   }
 
   var lastKey = null, lastRender = 0;
@@ -428,13 +474,13 @@
       if (!m) return;
       if (m.key !== lastKey) {
         lastKey = m.key;
-        S.media = m; S.comments = []; S.featured = { shown: {}, lastAt: 0, el: null }; S.revealed = {}; S.replyTo = null;
+        S.media = m; S.comments = []; S.miniKey = null; S.revealed = {}; S.replyTo = null;
         fab.querySelector('.cmtr-fab-count').textContent = '';
         api('GET', '/me').then(function (me) { S.me = me; render(); }, function (e) { S.error = e.message; render(); });
         if (m.ids.length) { loadComments(); openStream(); } else render();
       }
     }, function () { });
-    tickFeatured();
+    if (S.mode === 'overlay') renderMini();
     // keep the "At 18:32" chip and the Now marker moving, without re-rendering every frame
     if (Date.now() - lastRender > 1000) { lastRender = Date.now(); if (S.mode === 'sidebar' && side && !side.contains(document.activeElement)) renderSide(); else if (side) { var chip = side.querySelector('[data-pin]'); if (chip) chip.textContent = 'At ' + clock(S.posMs); } var cc = corner.querySelector('[data-pin]'); if (cc) cc.textContent = 'At ' + clock(S.posMs); }
   }

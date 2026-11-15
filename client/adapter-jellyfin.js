@@ -96,6 +96,25 @@
       return !osd.classList.contains('hide') && !osd.classList.contains('videoOsdBottom-hidden') && cs.visibility !== 'hidden' && Number(cs.opacity) > 0.2;
     },
 
+    // A comments button in Jellyfin's own control row, styled like its neighbours (PiP, fullscreen).
+    mountButton: function () {
+      var anchor = document.querySelector('.videoOsdBottom .btnPip') || document.querySelector('.videoOsdBottom .btnFullscreen');
+      if (!anchor || !anchor.parentNode) return null;
+      var b = anchor.parentNode.querySelector('.btnCommentarr');
+      if (!b) {
+        b = document.createElement('button');
+        b.setAttribute('is', 'paper-icon-button-light');
+        b.className = 'btnCommentarr autoSize paper-icon-button-light';
+        b.type = 'button';
+        b.title = 'Comments';
+        b.setAttribute('aria-label', 'Comments');
+        b.setAttribute('aria-haspopup', 'menu');
+        b.innerHTML = '<span class="xlargePaperIconButton material-icons forum" aria-hidden="true"></span>';
+        anchor.parentNode.insertBefore(b, anchor);
+      }
+      return b;
+    },
+
     controlsTop: function () {
       var osd = document.querySelector('.videoOsdBottom .osdControls') || document.querySelector('.videoOsdBottom');
       return osd ? osd.getBoundingClientRect().top : null;

@@ -15,15 +15,15 @@ Your library stays yours. Commentarr only knows *which title* you're watching (b
    https://raw.githubusercontent.com/tuikat/commentarr/main/manifest.json
    ```
 2. **Catalog → Commentarr → Install**, then restart Jellyfin.
-3. Play anything. A small comments button appears at the bottom right of the player.
+3. Play anything. A comments button appears in the player's control row, next to fullscreen.
 
 That's it. It connects to the shared comment server by itself. No account, no sign-up: people comment under their Jellyfin name and can change it in the comments panel.
 
 ## Using it
 
-Tap the comments button for three choices:
+Tap the comments button in the player controls for three choices:
 
-- **Overlay**: the best-liked comment for the moment you're at fades in at the corner, one at a time, then gets out of the way. This is the "watch along with everyone" mode.
+- **Overlay**: a small, always-on panel in the corner with the four latest moments you've passed (three on a phone). New ones slide in as you reach them, like a live chat replay, and there's a one-line box to add your own. This is the "watch along with everyone" mode.
 - **Sidebar**: every comment beside the video: sort by **Top**, **New**, or **By time** (with a *Now* line that follows playback), reply, like, report.
 - **Off**: no comments while you watch.
 

@@ -20,7 +20,7 @@
   letter-spacing: -0.006em;
 }
 @supports (corner-shape: squircle) {
-  .cmtr-menu, .cmtr-side, .cmtr-feature, .cmtr-compose, .cmtr-btn, .cmtr-input, .cmtr-chip, .cmtr-seg, .cmtr-seg button { corner-shape: squircle; }
+  .cmtr-menu, .cmtr-side, .cmtr-mini, .cmtr-mini-item, .cmtr-compose, .cmtr-btn, .cmtr-input, .cmtr-chip, .cmtr-seg, .cmtr-seg button { corner-shape: squircle; }
 }
 .cmtr button { font: inherit; color: inherit; }
 .cmtr button:focus-visible, .cmtr textarea:focus-visible, .cmtr input:focus-visible { outline: none; box-shadow: var(--c-ring); }
@@ -65,20 +65,38 @@
 
 /* ------------------------------------------------------------ overlay mode -- */
 .cmtr-corner {
-  position: fixed; top: 84px; right: 20px; z-index: 2147482999; width: min(340px, calc(100vw - 40px));
+  position: fixed; top: 84px; right: 20px; z-index: 2147482999; width: min(320px, calc(100vw - 40px));
   display: flex; flex-direction: column; gap: 8px; pointer-events: none;
 }
 .cmtr-corner > * { pointer-events: auto; }
-.cmtr-feature {
-  padding: 12px 14px; border-radius: 18px; background: var(--c-glass-light); box-shadow: var(--c-rim);
+/* the live panel: four moments, always on, small */
+.cmtr-mini {
+  display: flex; flex-direction: column; gap: 6px; padding: 10px 10px 8px;
+  border-radius: 22px; background: rgba(18, 18, 22, 0.46); box-shadow: var(--c-rim);
   -webkit-backdrop-filter: var(--c-blur); backdrop-filter: var(--c-blur);
-  animation: cmtr-in 0.35s var(--c-ease);
 }
-.cmtr-feature.is-out { animation: cmtr-out 0.4s var(--c-ease) forwards; }
-@keyframes cmtr-in { from { opacity: 0; transform: translateY(-6px); } }
-@keyframes cmtr-out { to { opacity: 0; transform: translateY(-4px); } }
-.cmtr-feature .cmtr-body { font-size: 15px; line-height: 21px; }
-.cmtr-corner-bar { display: flex; gap: 8px; justify-content: flex-end; }
+.cmtr-mini-head { display: flex; align-items: center; gap: 4px; padding: 0 2px 0 6px; }
+.cmtr-mini-label { flex: 1; min-width: 0; font-size: 12px; font-weight: 600; color: var(--c-text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cmtr-icon { border: 0; width: 28px; height: 28px; border-radius: 50%; background: transparent; color: var(--c-text-2); display: grid; place-items: center; cursor: pointer; flex: none; }
+.cmtr-icon:hover { background: var(--c-fill); color: var(--c-text); }
+.cmtr-icon svg { width: 13px; height: 13px; }
+.cmtr-mini-list { display: flex; flex-direction: column; gap: 2px; }
+.cmtr-mini-item {
+  padding: 6px 8px; border-radius: 12px; font-size: 13.5px; line-height: 19px; color: var(--c-text);
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.35);
+}
+.cmtr-mini-item b { font-weight: 600; color: var(--c-text-2); margin-right: 2px; }
+.cmtr-mini-item .cmtr-time { font-size: 11.5px; line-height: 18px; padding: 0 6px; margin-right: 2px; vertical-align: 1px; }
+.cmtr-mini-item.is-new { animation: cmtr-in 0.4s var(--c-ease); }
+.cmtr-mini-likes { color: var(--c-text-3); font-size: 12px; white-space: nowrap; }
+.cmtr-mini-empty { margin: 0; padding: 6px 8px 8px; font-size: 13px; color: var(--c-text-2); }
+.cmtr-mini-compose .cmtr-compose { margin: 2px 0 0; padding: 6px 6px 6px 8px; border-radius: 16px; background: rgba(255, 255, 255, 0.07); box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+.cmtr-mini-compose .cmtr-input { font-size: 13.5px; line-height: 19px; min-height: 24px; padding: 3px 4px; }
+.cmtr-mini-compose .cmtr-compose-bar { margin-top: 4px; }
+.cmtr-mini-compose .cmtr-chip { height: 24px; font-size: 11.5px; padding: 0 9px; }
+.cmtr-mini-compose .cmtr-btn { height: 26px; font-size: 12px; padding: 0 12px; }
+@keyframes cmtr-in { from { opacity: 0; transform: translateY(6px); } }
 
 /* -------------------------------------------------------------- sidebar mode -- */
 .cmtr-side {
@@ -128,7 +146,6 @@
 .cmtr-empty { margin: 12px 10px; padding: 18px; border-radius: 16px; background: rgba(255, 255, 255, 0.04); color: var(--c-text-2); }
 
 .cmtr-compose { margin: 0 12px 12px; padding: 10px; border-radius: 18px; background: rgba(255, 255, 255, 0.07); }
-.cmtr-corner .cmtr-compose { margin: 0; background: var(--c-glass-light); box-shadow: var(--c-rim); -webkit-backdrop-filter: var(--c-blur); backdrop-filter: var(--c-blur); }
 .cmtr-input { width: 100%; resize: none; border: 0; background: transparent; color: var(--c-text); font: inherit; font-size: 15px; line-height: 21px; padding: 4px 6px; min-height: 30px; max-height: 140px; }
 .cmtr-input::placeholder { color: var(--c-text-3); }
 .cmtr-compose-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; }
@@ -155,12 +172,25 @@
   .cmtr-fab { right: 14px; bottom: 132px; }
   .cmtr-menu { right: 14px; bottom: 186px; }
   .cmtr-corner { top: 64px; right: 12px; width: calc(100vw - 24px); }
+  .cmtr-mini-item { -webkit-line-clamp: 2; }
   .cmtr-side { top: auto; left: 0; right: 0; bottom: 0; width: 100%; height: 62vh; height: 62dvh; border-radius: 26px 26px 0 0; padding-bottom: env(safe-area-inset-bottom, 0px); animation-name: cmtr-up; }
   @keyframes cmtr-up { from { opacity: 0.4; transform: translateY(30px); } }
 }
 @media (prefers-reduced-transparency: reduce) {
-  .cmtr-fab, .cmtr-menu, .cmtr-side, .cmtr-feature, .cmtr-corner .cmtr-compose, .cmtr-pop { background: #1f1f23; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .cmtr-fab, .cmtr-menu, .cmtr-side, .cmtr-mini, .cmtr-pop { background: #1f1f23; -webkit-backdrop-filter: none; backdrop-filter: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   .cmtr *, .cmtr-fab, .cmtr-menu, .cmtr-side { animation: none !important; transition: none !important; }
+}
+
+/* the live panel's composer is one row: text, the "At 2:40" chip, Post */
+.cmtr-mini-compose .cmtr-compose { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.cmtr-mini-compose .cmtr-input { flex: 1 1 120px; min-width: 0; }
+.cmtr-mini-compose .cmtr-compose-bar { margin: 0; flex: none; gap: 6px; }
+.cmtr-mini-compose .cmtr-err { flex-basis: 100%; }
+@media (max-width: 640px) {
+  /* three newest moments on a phone, so the panel stays out of the picture */
+  .cmtr-mini-item:first-child:nth-last-child(4) { display: none; }
+  .cmtr-mini { padding: 8px 8px 6px; gap: 4px; }
+  .cmtr-mini-item { font-size: 13px; line-height: 18px; padding: 4px 6px; }
 }

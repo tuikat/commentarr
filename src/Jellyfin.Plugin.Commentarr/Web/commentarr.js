@@ -1,5 +1,5 @@
-/*! Commentarr 1.0.0 · https://github.com/tuikat/commentarr · AGPL-3.0-or-later */
-window.__CMTR_CSS__ = "/* Commentarr player UI. Scoped under .cmtr-*; touches nothing of the host player.\n   Glass layers, continuous corners, one accent (the \"you are here\" marker and links). */\n.cmtr, .cmtr * { box-sizing: border-box; }\n.cmtr {\n  --c-text: #f5f5f7;\n  --c-text-2: rgba(235, 235, 245, 0.72);\n  --c-text-3: rgba(235, 235, 245, 0.52);\n  --c-accent: #0a84ff;\n  --c-glass: rgba(28, 28, 32, 0.72);\n  --c-glass-light: rgba(28, 28, 32, 0.5);\n  --c-fill: rgba(255, 255, 255, 0.1);\n  --c-fill-2: rgba(255, 255, 255, 0.17);\n  --c-blur: saturate(180%) blur(26px);\n  --c-rim: inset 0 0 0 0.5px rgba(255, 255, 255, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.1);\n  --c-ring: 0 0 0 2px rgba(0, 0, 0, 0.6), 0 0 0 4px rgba(255, 255, 255, 0.92);\n  --c-ease: cubic-bezier(0.25, 0.8, 0.25, 1);\n  font: 14px/1.45 -apple-system, BlinkMacSystemFont, \"SF Pro Text\", \"Helvetica Neue\", Inter, \"Segoe UI\", system-ui, sans-serif;\n  color: var(--c-text);\n  -webkit-font-smoothing: antialiased;\n  letter-spacing: -0.006em;\n}\n@supports (corner-shape: squircle) {\n  .cmtr-menu, .cmtr-side, .cmtr-feature, .cmtr-compose, .cmtr-btn, .cmtr-input, .cmtr-chip, .cmtr-seg, .cmtr-seg button { corner-shape: squircle; }\n}\n.cmtr button { font: inherit; color: inherit; }\n.cmtr button:focus-visible, .cmtr textarea:focus-visible, .cmtr input:focus-visible { outline: none; box-shadow: var(--c-ring); }\n\n/* --------------------------------------------------------- player button -- */\n.cmtr-fab {\n  position: fixed; right: 20px; bottom: 112px; z-index: 2147483000;\n  width: 44px; height: 44px; border: 0; border-radius: 50%;\n  display: grid; place-items: center; cursor: pointer;\n  background: var(--c-glass-light); box-shadow: var(--c-rim);\n  -webkit-backdrop-filter: var(--c-blur); backdrop-filter: var(--c-blur);\n  transition: opacity 0.25s var(--c-ease), background-color 0.18s var(--c-ease), transform 0.18s var(--c-ease);\n}\n.cmtr-fab:hover { background: var(--c-glass); }\n.cmtr-fab:active { transform: scale(0.94); }\n.cmtr-fab.is-idle { opacity: 0; pointer-events: none; }\n.cmtr-fab svg { width: 21px; height: 21px; }\n.cmtr-fab-count {\n  position: absolute; top: -4px; right: -4px; min-width: 20px; height: 20px; padding: 0 6px;\n  border-radius: 999px; background: #f5f5f7; color: #0b0b0d; font-size: 11px; font-weight: 700;\n  display: grid; place-items: center; font-variant-numeric: tabular-nums;\n}\n.cmtr-fab-count:empty { display: none; }\n\n/* the small menu that opens in place */\n.cmtr-menu {\n  position: fixed; right: 20px; bottom: 166px; z-index: 2147483001; width: 236px; padding: 6px;\n  border-radius: 20px; background: var(--c-glass); box-shadow: var(--c-rim), 0 18px 50px rgba(0, 0, 0, 0.5);\n  -webkit-backdrop-filter: var(--c-blur); backdrop-filter: var(--c-blur);\n  animation: cmtr-pop 0.18s var(--c-ease); transform-origin: 90% 100%;\n}\n.cmtr-menu[hidden] { display: none; }\n@keyframes cmtr-pop { from { opacity: 0; transform: scale(0.94) translateY(6px); } }\n.cmtr-menu-head { padding: 8px 12px 6px; font-size: 12px; color: var(--c-text-3); }\n.cmtr-menu button {\n  display: flex; align-items: center; justify-content: space-between; width: 100%;\n  border: 0; background: none; padding: 10px 12px; border-radius: 13px; cursor: pointer; text-align: left; font-weight: 500;\n}\n.cmtr-menu button:hover { background: var(--c-fill); }\n.cmtr-menu button[aria-checked=\"true\"]::after { content: \"\"; width: 7px; height: 7px; border-radius: 50%; background: var(--c-text); }\n.cmtr-menu small { display: block; color: var(--c-text-3); font-size: 12px; font-weight: 400; }\n\n/* ------------------------------------------------------------ overlay mode -- */\n.cmtr-corner {\n  position: fixed; top: 84px; right: 20px; z-index: 2147482999; width: min(340px, calc(100vw - 40px));\n  display: flex; flex-direction: column; gap: 8px; pointer-events: none;\n}\n.cmtr-corner > * { pointer-events: auto; }\n.cmtr-feature {\n  padding: 12px 14px; border-radius: 18px; background: var(--c-glass-light); box-shadow: var(--c-rim);\n  -webkit-backdrop-filter: var(--c-blur); backdrop-filter: var(--c-blur);\n  animation: cmtr-in 0.35s var(--c-ease);\n}\n.cmtr-feature.is-out { animation: cmtr-out 0.4s var(--c-ease) forwards; }\n@keyframes cmtr-in { from { opacity: 0; transform: translateY(-6px); } }\n@keyframes cmtr-out { to { opacity: 0; transform: translateY(-4px); } }\n.cmtr-feature .cmtr-body { font-size: 15px; line-height: 21px; }\n.cmtr-corner-bar { display: flex; gap: 8px; justify-content: flex-end; }\n\n/* -------------------------------------------------------------- sidebar mode -- */\n.cmtr-side {\n  position: fixed; top: 12px; right: 12px; bottom: 12px; z-index: 2147482999; width: min(400px, calc(100vw - 24px));\n  display: flex; flex-direction: column; border-radius: 26px; overflow: hidden;\n  background: var(--c-glass); box-shadow: var(--c-rim), 0 24px 70px rgba(0, 0, 0, 0.5);\n  -webkit-backdrop-filter: var(--c-blur); backdrop-filter: var(--c-blur);\n  animation: cmtr-slide 0.28s var(--c-ease);\n}\n@keyframes cmtr-slide { from { opacity: 0; transform: translateX(24px); } }\n.cmtr-side-head { padding: 18px 18px 10px; display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; align-items: start; }\n.cmtr-side-head h2 { margin: 0; font-size: 19px; line-height: 24px; font-weight: 700; letter-spacing: -0.02em; }\n.cmtr-side-head p { margin: 0; grid-column: 1; color: var(--c-text-2); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }\n.cmtr-x { grid-row: 1 / span 2; grid-column: 2; width: 32px; height: 32px; border: 0; border-radius: 50%; background: var(--c-fill); cursor: pointer; display: grid; place-items: center; }\n.cmtr-x:hover { background: var(--c-fill-2); }\n.cmtr-x svg { width: 13px; height: 13px; }\n\n.cmtr-tools { display: flex; gap: 8px; align-items: center; justify-content: space-between; padding: 0 18px 12px; flex-wrap: wrap; }\n.cmtr-seg { display: inline-flex; padding: 3px; gap: 2px; border-radius: 999px; background: var(--c-fill); }\n.cmtr-seg button { border: 0; background: none; height: 28px; padding: 0 12px; border-radius: 999px; cursor: pointer; font-weight: 600; font-size: 13px; color: var(--c-text-2); }\n.cmtr-seg button[aria-pressed=\"true\"] { background: rgba(255, 255, 255, 0.18); color: var(--c-text); }\n\n.cmtr-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 4px 10px 12px; scrollbar-width: thin; }\n.cmtr-item { padding: 10px 8px 10px 10px; border-radius: 16px; position: relative; }\n.cmtr-item:hover { background: rgba(255, 255, 255, 0.04); }\n.cmtr-item.is-new { animation: cmtr-in 0.4s var(--c-ease); }\n.cmtr-replies { margin-left: 22px; }\n.cmtr-who { display: flex; align-items: baseline; gap: 6px; font-size: 13px; }\n.cmtr-who b { font-weight: 600; }\n.cmtr-who span { color: var(--c-text-3); font-size: 12px; }\n.cmtr-body { margin-top: 2px; white-space: pre-wrap; word-break: break-word; }\n.cmtr-body a, .cmtr-time {\n  color: var(--c-text); font-weight: 600; text-decoration: none; cursor: pointer;\n  background: var(--c-fill); border: 0; border-radius: 999px; padding: 0 7px; font-variant-numeric: tabular-nums; font-size: 12.5px; line-height: 20px; display: inline-block;\n}\n.cmtr-body a:hover, .cmtr-time:hover { background: var(--c-fill-2); }\n.cmtr-acts { display: flex; gap: 2px; margin-top: 4px; margin-left: -6px; }\n.cmtr-acts button { border: 0; background: none; color: var(--c-text-3); font-size: 12px; font-weight: 600; padding: 3px 7px; border-radius: 999px; cursor: pointer; }\n.cmtr-acts button:hover { color: var(--c-text); background: var(--c-fill); }\n.cmtr-acts button[aria-pressed=\"true\"] { color: var(--c-text); }\n.cmtr-note { color: var(--c-text-3); font-size: 12px; }\n.cmtr-spoiler .cmtr-body { filter: blur(6px); user-select: none; }\n.cmtr-reveal { border: 0; background: var(--c-fill); border-radius: 999px; font-size: 12px; font-weight: 600; padding: 2px 9px; cursor: pointer; margin-top: 4px; }\n\n.cmtr-now { display: flex; align-items: center; gap: 8px; margin: 6px 10px; color: var(--c-accent); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }\n.cmtr-now::before, .cmtr-now::after { content: \"\"; flex: 1; height: 1px; background: currentColor; opacity: 0.6; }\n.cmtr-empty { margin: 12px 10px; padding: 18px; border-radius: 16px; background: rgba(255, 255, 255, 0.04); color: var(--c-text-2); }\n\n.cmtr-compose { margin: 0 12px 12px; padding: 10px; border-radius: 18px; background: rgba(255, 255, 255, 0.07); }\n.cmtr-corner .cmtr-compose { margin: 0; background: var(--c-glass-light); box-shadow: var(--c-rim); -webkit-backdrop-filter: var(--c-blur); backdrop-filter: var(--c-blur); }\n.cmtr-input { width: 100%; resize: none; border: 0; background: transparent; color: var(--c-text); font: inherit; font-size: 15px; line-height: 21px; padding: 4px 6px; min-height: 30px; max-height: 140px; }\n.cmtr-input::placeholder { color: var(--c-text-3); }\n.cmtr-compose-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; }\n.cmtr-chip { border: 0; height: 28px; padding: 0 11px; border-radius: 999px; background: var(--c-fill); color: var(--c-text-2); font-size: 12.5px; font-weight: 600; cursor: pointer; font-variant-numeric: tabular-nums; }\n.cmtr-chip[aria-pressed=\"true\"] { background: rgba(255, 255, 255, 0.2); color: var(--c-text); }\n.cmtr-btn { border: 0; height: 30px; padding: 0 14px; border-radius: 999px; background: #f5f5f7; color: #0b0b0d !important; font-size: 13px; font-weight: 700; cursor: pointer; }\n.cmtr-btn.ghost { background: var(--c-fill); color: var(--c-text) !important; font-weight: 600; }\n.cmtr-btn:disabled { opacity: 0.45; cursor: default; }\n.cmtr-err { color: #ffb4ab; font-size: 12.5px; padding: 6px 6px 0; }\n.cmtr-err:empty { display: none; }\n.cmtr-replying { font-size: 12px; color: var(--c-text-2); padding: 0 6px 4px; display: flex; justify-content: space-between; }\n.cmtr-replying button { border: 0; background: none; color: var(--c-text-3); cursor: pointer; font-size: 12px; }\n\n.cmtr-foot { padding: 10px 18px 14px; display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--c-text-3); }\n.cmtr-foot button { border: 0; background: none; color: var(--c-text-2); cursor: pointer; font-size: 12px; text-decoration: underline; text-underline-offset: 3px; padding: 0; }\n\n/* item menu (report / delete / hide) */\n.cmtr-pop { position: fixed; z-index: 2147483002; min-width: 190px; padding: 5px; border-radius: 16px; background: rgba(36, 36, 40, 0.92); box-shadow: var(--c-rim), 0 16px 40px rgba(0, 0, 0, 0.5); -webkit-backdrop-filter: var(--c-blur); backdrop-filter: var(--c-blur); }\n.cmtr-pop button { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 9px 12px; border-radius: 11px; cursor: pointer; }\n.cmtr-pop button:hover { background: var(--c-fill); }\n\n/* ------------------------------------------------------------------ phone -- */\n@media (max-width: 640px) {\n  .cmtr-fab { right: 14px; bottom: 132px; }\n  .cmtr-menu { right: 14px; bottom: 186px; }\n  .cmtr-corner { top: 64px; right: 12px; width: calc(100vw - 24px); }\n  .cmtr-side { top: auto; left: 0; right: 0; bottom: 0; width: 100%; height: 62vh; height: 62dvh; border-radius: 26px 26px 0 0; padding-bottom: env(safe-area-inset-bottom, 0px); animation-name: cmtr-up; }\n  @keyframes cmtr-up { from { opacity: 0.4; transform: translateY(30px); } }\n}\n@media (prefers-reduced-transparency: reduce) {\n  .cmtr-fab, .cmtr-menu, .cmtr-side, .cmtr-feature, .cmtr-corner .cmtr-compose, .cmtr-pop { background: #1f1f23; -webkit-backdrop-filter: none; backdrop-filter: none; }\n}\n@media (prefers-reduced-motion: reduce) {\n  .cmtr *, .cmtr-fab, .cmtr-menu, .cmtr-side { animation: none !important; transition: none !important; }\n}\n";
+/*! Commentarr 1.0.1 · https://github.com/tuikat/commentarr · AGPL-3.0-or-later */
+window.__CMTR_CSS__ = "/* Commentarr player UI. Scoped under .cmtr-*; touches nothing of the host player.\n   Glass layers, continuous corners, one accent (the \"you are here\" marker and links). */\n.cmtr, .cmtr * { box-sizing: border-box; }\n.cmtr {\n  --c-text: #f5f5f7;\n  --c-text-2: rgba(235, 235, 245, 0.72);\n  --c-text-3: rgba(235, 235, 245, 0.52);\n  --c-accent: #0a84ff;\n  --c-glass: rgba(28, 28, 32, 0.72);\n  --c-glass-light: rgba(28, 28, 32, 0.5);\n  --c-fill: rgba(255, 255, 255, 0.1);\n  --c-fill-2: rgba(255, 255, 255, 0.17);\n  --c-blur: saturate(180%) blur(26px);\n  --c-rim: inset 0 0 0 0.5px rgba(255, 255, 255, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.1);\n  --c-ring: 0 0 0 2px rgba(0, 0, 0, 0.6), 0 0 0 4px rgba(255, 255, 255, 0.92);\n  --c-ease: cubic-bezier(0.25, 0.8, 0.25, 1);\n  font: 14px/1.45 -apple-system, BlinkMacSystemFont, \"SF Pro Text\", \"Helvetica Neue\", Inter, \"Segoe UI\", system-ui, sans-serif;\n  color: var(--c-text);\n  -webkit-font-smoothing: antialiased;\n  letter-spacing: -0.006em;\n}\n@supports (corner-shape: squircle) {\n  .cmtr-menu, .cmtr-side, .cmtr-mini, .cmtr-mini-item, .cmtr-compose, .cmtr-btn, .cmtr-input, .cmtr-chip, .cmtr-seg, .cmtr-seg button { corner-shape: squircle; }\n}\n.cmtr button { font: inherit; color: inherit; }\n.cmtr button:focus-visible, .cmtr textarea:focus-visible, .cmtr input:focus-visible { outline: none; box-shadow: var(--c-ring); }\n\n/* --------------------------------------------------------- player button -- */\n.cmtr-fab {\n  position: fixed; right: 20px; bottom: 112px; z-index: 2147483000;\n  width: 44px; height: 44px; border: 0; border-radius: 50%;\n  display: grid; place-items: center; cursor: pointer;\n  background: var(--c-glass-light); box-shadow: var(--c-rim);\n  -webkit-backdrop-filter: var(--c-blur); backdrop-filter: var(--c-blur);\n  transition: opacity 0.25s var(--c-ease), background-color 0.18s var(--c-ease), transform 0.18s var(--c-ease);\n}\n.cmtr-fab:hover { background: var(--c-glass); }\n.cmtr-fab:active { transform: scale(0.94); }\n.cmtr-fab.is-idle { opacity: 0; pointer-events: none; }\n.cmtr-fab svg { width: 21px; height: 21px; }\n.cmtr-fab-count {\n  position: absolute; top: -4px; right: -4px; min-width: 20px; height: 20px; padding: 0 6px;\n  border-radius: 999px; background: #f5f5f7; color: #0b0b0d; font-size: 11px; font-weight: 700;\n  display: grid; place-items: center; font-variant-numeric: tabular-nums;\n}\n.cmtr-fab-count:empty { display: none; }\n\n/* the small menu that opens in place */\n.cmtr-menu {\n  position: fixed; right: 20px; bottom: 166px; z-index: 2147483001; width: 236px; padding: 6px;\n  border-radius: 20px; background: var(--c-glass); box-shadow: var(--c-rim), 0 18px 50px rgba(0, 0, 0, 0.5);\n  -webkit-backdrop-filter: var(--c-blur); backdrop-filter: var(--c-blur);\n  animation: cmtr-pop 0.18s var(--c-ease); transform-origin: 90% 100%;\n}\n.cmtr-menu[hidden] { display: none; }\n@keyframes cmtr-pop { from { opacity: 0; transform: scale(0.94) translateY(6px); } }\n.cmtr-menu-head { padding: 8px 12px 6px; font-size: 12px; color: var(--c-text-3); }\n.cmtr-menu button {\n  display: flex; align-items: center; justify-content: space-between; width: 100%;\n  border: 0; background: none; padding: 10px 12px; border-radius: 13px; cursor: pointer; text-align: left; font-weight: 500;\n}\n.cmtr-menu button:hover { background: var(--c-fill); }\n.cmtr-menu button[aria-checked=\"true\"]::after { content: \"\"; width: 7px; height: 7px; border-radius: 50%; background: var(--c-text); }\n.cmtr-menu small { display: block; color: var(--c-text-3); font-size: 12px; font-weight: 400; }\n\n/* ------------------------------------------------------------ overlay mode -- */\n.cmtr-corner {\n  position: fixed; top: 84px; right: 20px; z-index: 2147482999; width: min(320px, calc(100vw - 40px));\n  display: flex; flex-direction: column; gap: 8px; pointer-events: none;\n}\n.cmtr-corner > * { pointer-events: auto; }\n/* the live panel: four moments, always on, small */\n.cmtr-mini {\n  display: flex; flex-direction: column; gap: 6px; padding: 10px 10px 8px;\n  border-radius: 22px; background: rgba(18, 18, 22, 0.46); box-shadow: var(--c-rim);\n  -webkit-backdrop-filter: var(--c-blur); backdrop-filter: var(--c-blur);\n}\n.cmtr-mini-head { display: flex; align-items: center; gap: 4px; padding: 0 2px 0 6px; }\n.cmtr-mini-label { flex: 1; min-width: 0; font-size: 12px; font-weight: 600; color: var(--c-text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }\n.cmtr-icon { border: 0; width: 28px; height: 28px; border-radius: 50%; background: transparent; color: var(--c-text-2); display: grid; place-items: center; cursor: pointer; flex: none; }\n.cmtr-icon:hover { background: var(--c-fill); color: var(--c-text); }\n.cmtr-icon svg { width: 13px; height: 13px; }\n.cmtr-mini-list { display: flex; flex-direction: column; gap: 2px; }\n.cmtr-mini-item {\n  padding: 6px 8px; border-radius: 12px; font-size: 13.5px; line-height: 19px; color: var(--c-text);\n  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word;\n  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.35);\n}\n.cmtr-mini-item b { font-weight: 600; color: var(--c-text-2); margin-right: 2px; }\n.cmtr-mini-item .cmtr-time { font-size: 11.5px; line-height: 18px; padding: 0 6px; margin-right: 2px; vertical-align: 1px; }\n.cmtr-mini-item.is-new { animation: cmtr-in 0.4s var(--c-ease); }\n.cmtr-mini-likes { color: var(--c-text-3); font-size: 12px; white-space: nowrap; }\n.cmtr-mini-empty { margin: 0; padding: 6px 8px 8px; font-size: 13px; color: var(--c-text-2); }\n.cmtr-mini-compose .cmtr-compose { margin: 2px 0 0; padding: 6px 6px 6px 8px; border-radius: 16px; background: rgba(255, 255, 255, 0.07); box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }\n.cmtr-mini-compose .cmtr-input { font-size: 13.5px; line-height: 19px; min-height: 24px; padding: 3px 4px; }\n.cmtr-mini-compose .cmtr-compose-bar { margin-top: 4px; }\n.cmtr-mini-compose .cmtr-chip { height: 24px; font-size: 11.5px; padding: 0 9px; }\n.cmtr-mini-compose .cmtr-btn { height: 26px; font-size: 12px; padding: 0 12px; }\n@keyframes cmtr-in { from { opacity: 0; transform: translateY(6px); } }\n\n/* -------------------------------------------------------------- sidebar mode -- */\n.cmtr-side {\n  position: fixed; top: 12px; right: 12px; bottom: 12px; z-index: 2147482999; width: min(400px, calc(100vw - 24px));\n  display: flex; flex-direction: column; border-radius: 26px; overflow: hidden;\n  background: var(--c-glass); box-shadow: var(--c-rim), 0 24px 70px rgba(0, 0, 0, 0.5);\n  -webkit-backdrop-filter: var(--c-blur); backdrop-filter: var(--c-blur);\n  animation: cmtr-slide 0.28s var(--c-ease);\n}\n@keyframes cmtr-slide { from { opacity: 0; transform: translateX(24px); } }\n.cmtr-side-head { padding: 18px 18px 10px; display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; align-items: start; }\n.cmtr-side-head h2 { margin: 0; font-size: 19px; line-height: 24px; font-weight: 700; letter-spacing: -0.02em; }\n.cmtr-side-head p { margin: 0; grid-column: 1; color: var(--c-text-2); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }\n.cmtr-x { grid-row: 1 / span 2; grid-column: 2; width: 32px; height: 32px; border: 0; border-radius: 50%; background: var(--c-fill); cursor: pointer; display: grid; place-items: center; }\n.cmtr-x:hover { background: var(--c-fill-2); }\n.cmtr-x svg { width: 13px; height: 13px; }\n\n.cmtr-tools { display: flex; gap: 8px; align-items: center; justify-content: space-between; padding: 0 18px 12px; flex-wrap: wrap; }\n.cmtr-seg { display: inline-flex; padding: 3px; gap: 2px; border-radius: 999px; background: var(--c-fill); }\n.cmtr-seg button { border: 0; background: none; height: 28px; padding: 0 12px; border-radius: 999px; cursor: pointer; font-weight: 600; font-size: 13px; color: var(--c-text-2); }\n.cmtr-seg button[aria-pressed=\"true\"] { background: rgba(255, 255, 255, 0.18); color: var(--c-text); }\n\n.cmtr-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 4px 10px 12px; scrollbar-width: thin; }\n.cmtr-item { padding: 10px 8px 10px 10px; border-radius: 16px; position: relative; }\n.cmtr-item:hover { background: rgba(255, 255, 255, 0.04); }\n.cmtr-item.is-new { animation: cmtr-in 0.4s var(--c-ease); }\n.cmtr-replies { margin-left: 22px; }\n.cmtr-who { display: flex; align-items: baseline; gap: 6px; font-size: 13px; }\n.cmtr-who b { font-weight: 600; }\n.cmtr-who span { color: var(--c-text-3); font-size: 12px; }\n.cmtr-body { margin-top: 2px; white-space: pre-wrap; word-break: break-word; }\n.cmtr-body a, .cmtr-time {\n  color: var(--c-text); font-weight: 600; text-decoration: none; cursor: pointer;\n  background: var(--c-fill); border: 0; border-radius: 999px; padding: 0 7px; font-variant-numeric: tabular-nums; font-size: 12.5px; line-height: 20px; display: inline-block;\n}\n.cmtr-body a:hover, .cmtr-time:hover { background: var(--c-fill-2); }\n.cmtr-acts { display: flex; gap: 2px; margin-top: 4px; margin-left: -6px; }\n.cmtr-acts button { border: 0; background: none; color: var(--c-text-3); font-size: 12px; font-weight: 600; padding: 3px 7px; border-radius: 999px; cursor: pointer; }\n.cmtr-acts button:hover { color: var(--c-text); background: var(--c-fill); }\n.cmtr-acts button[aria-pressed=\"true\"] { color: var(--c-text); }\n.cmtr-note { color: var(--c-text-3); font-size: 12px; }\n.cmtr-spoiler .cmtr-body { filter: blur(6px); user-select: none; }\n.cmtr-reveal { border: 0; background: var(--c-fill); border-radius: 999px; font-size: 12px; font-weight: 600; padding: 2px 9px; cursor: pointer; margin-top: 4px; }\n\n.cmtr-now { display: flex; align-items: center; gap: 8px; margin: 6px 10px; color: var(--c-accent); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }\n.cmtr-now::before, .cmtr-now::after { content: \"\"; flex: 1; height: 1px; background: currentColor; opacity: 0.6; }\n.cmtr-empty { margin: 12px 10px; padding: 18px; border-radius: 16px; background: rgba(255, 255, 255, 0.04); color: var(--c-text-2); }\n\n.cmtr-compose { margin: 0 12px 12px; padding: 10px; border-radius: 18px; background: rgba(255, 255, 255, 0.07); }\n.cmtr-input { width: 100%; resize: none; border: 0; background: transparent; color: var(--c-text); font: inherit; font-size: 15px; line-height: 21px; padding: 4px 6px; min-height: 30px; max-height: 140px; }\n.cmtr-input::placeholder { color: var(--c-text-3); }\n.cmtr-compose-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; }\n.cmtr-chip { border: 0; height: 28px; padding: 0 11px; border-radius: 999px; background: var(--c-fill); color: var(--c-text-2); font-size: 12.5px; font-weight: 600; cursor: pointer; font-variant-numeric: tabular-nums; }\n.cmtr-chip[aria-pressed=\"true\"] { background: rgba(255, 255, 255, 0.2); color: var(--c-text); }\n.cmtr-btn { border: 0; height: 30px; padding: 0 14px; border-radius: 999px; background: #f5f5f7; color: #0b0b0d !important; font-size: 13px; font-weight: 700; cursor: pointer; }\n.cmtr-btn.ghost { background: var(--c-fill); color: var(--c-text) !important; font-weight: 600; }\n.cmtr-btn:disabled { opacity: 0.45; cursor: default; }\n.cmtr-err { color: #ffb4ab; font-size: 12.5px; padding: 6px 6px 0; }\n.cmtr-err:empty { display: none; }\n.cmtr-replying { font-size: 12px; color: var(--c-text-2); padding: 0 6px 4px; display: flex; justify-content: space-between; }\n.cmtr-replying button { border: 0; background: none; color: var(--c-text-3); cursor: pointer; font-size: 12px; }\n\n.cmtr-foot { padding: 10px 18px 14px; display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--c-text-3); }\n.cmtr-foot button { border: 0; background: none; color: var(--c-text-2); cursor: pointer; font-size: 12px; text-decoration: underline; text-underline-offset: 3px; padding: 0; }\n\n/* item menu (report / delete / hide) */\n.cmtr-pop { position: fixed; z-index: 2147483002; min-width: 190px; padding: 5px; border-radius: 16px; background: rgba(36, 36, 40, 0.92); box-shadow: var(--c-rim), 0 16px 40px rgba(0, 0, 0, 0.5); -webkit-backdrop-filter: var(--c-blur); backdrop-filter: var(--c-blur); }\n.cmtr-pop button { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 9px 12px; border-radius: 11px; cursor: pointer; }\n.cmtr-pop button:hover { background: var(--c-fill); }\n\n/* ------------------------------------------------------------------ phone -- */\n@media (max-width: 640px) {\n  .cmtr-fab { right: 14px; bottom: 132px; }\n  .cmtr-menu { right: 14px; bottom: 186px; }\n  .cmtr-corner { top: 64px; right: 12px; width: calc(100vw - 24px); }\n  .cmtr-mini-item { -webkit-line-clamp: 2; }\n  .cmtr-side { top: auto; left: 0; right: 0; bottom: 0; width: 100%; height: 62vh; height: 62dvh; border-radius: 26px 26px 0 0; padding-bottom: env(safe-area-inset-bottom, 0px); animation-name: cmtr-up; }\n  @keyframes cmtr-up { from { opacity: 0.4; transform: translateY(30px); } }\n}\n@media (prefers-reduced-transparency: reduce) {\n  .cmtr-fab, .cmtr-menu, .cmtr-side, .cmtr-mini, .cmtr-pop { background: #1f1f23; -webkit-backdrop-filter: none; backdrop-filter: none; }\n}\n@media (prefers-reduced-motion: reduce) {\n  .cmtr *, .cmtr-fab, .cmtr-menu, .cmtr-side { animation: none !important; transition: none !important; }\n}\n\n/* the live panel's composer is one row: text, the \"At 2:40\" chip, Post */\n.cmtr-mini-compose .cmtr-compose { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }\n.cmtr-mini-compose .cmtr-input { flex: 1 1 120px; min-width: 0; }\n.cmtr-mini-compose .cmtr-compose-bar { margin: 0; flex: none; gap: 6px; }\n.cmtr-mini-compose .cmtr-err { flex-basis: 100%; }\n@media (max-width: 640px) {\n  /* three newest moments on a phone, so the panel stays out of the picture */\n  .cmtr-mini-item:first-child:nth-last-child(4) { display: none; }\n  .cmtr-mini { padding: 8px 8px 6px; gap: 4px; }\n  .cmtr-mini-item { font-size: 13px; line-height: 18px; padding: 4px 6px; }\n}\n";
 /* Commentarr: Jellyfin web adapter. Loaded by the Commentarr Jellyfin plugin. AGPL-3.0-or-later. */
 (function () {
   'use strict';
@@ -98,6 +98,25 @@ window.__CMTR_CSS__ = "/* Commentarr player UI. Scoped under .cmtr-*; touches no
       return !osd.classList.contains('hide') && !osd.classList.contains('videoOsdBottom-hidden') && cs.visibility !== 'hidden' && Number(cs.opacity) > 0.2;
     },
 
+    // A comments button in Jellyfin's own control row, styled like its neighbours (PiP, fullscreen).
+    mountButton: function () {
+      var anchor = document.querySelector('.videoOsdBottom .btnPip') || document.querySelector('.videoOsdBottom .btnFullscreen');
+      if (!anchor || !anchor.parentNode) return null;
+      var b = anchor.parentNode.querySelector('.btnCommentarr');
+      if (!b) {
+        b = document.createElement('button');
+        b.setAttribute('is', 'paper-icon-button-light');
+        b.className = 'btnCommentarr autoSize paper-icon-button-light';
+        b.type = 'button';
+        b.title = 'Comments';
+        b.setAttribute('aria-label', 'Comments');
+        b.setAttribute('aria-haspopup', 'menu');
+        b.innerHTML = '<span class="xlargePaperIconButton material-icons forum" aria-hidden="true"></span>';
+        anchor.parentNode.insertBefore(b, anchor);
+      }
+      return b;
+    },
+
     controlsTop: function () {
       var osd = document.querySelector('.videoOsdBottom .osdControls') || document.querySelector('.videoOsdBottom');
       return osd ? osd.getBoundingClientRect().top : null;
@@ -136,7 +155,7 @@ window.__CMTR_CSS__ = "/* Commentarr player UI. Scoped under .cmtr-*; touches no
     sort: pref('sort', 'top'),           // top | new
     spoilers: pref('spoilers', false),   // hide pinned comments you haven't reached yet
     menuOpen: false, replyTo: null, pinNow: null, revealed: {},
-    featured: { shown: {}, lastAt: 0, el: null, timer: null },
+    miniKey: null,
     es: null, posMs: 0, error: '',
   };
 
@@ -200,17 +219,34 @@ window.__CMTR_CSS__ = "/* Commentarr player UI. Scoped under .cmtr-*; touches no
   var side = null;
   root.appendChild(fab); root.appendChild(menu); root.appendChild(corner);
 
-  fab.addEventListener('click', function (e) { e.stopPropagation(); S.menuOpen = !S.menuOpen; renderMenu(); });
-  document.addEventListener('click', function (e) { if (S.menuOpen && !menu.contains(e.target) && e.target !== fab) { S.menuOpen = false; renderMenu(); } closePop(e); }, true);
+  // The host's own control-row button when the adapter can provide one; the floating button otherwise.
+  var hostBtn = null;
+  function toggleMenu(e) { e.preventDefault(); e.stopPropagation(); S.menuOpen = !S.menuOpen; renderMenu(); }
+  fab.addEventListener('click', toggleMenu);
+  document.addEventListener('click', function (e) {
+    if (S.menuOpen && !menu.contains(e.target) && e.target !== fab && !(hostBtn && hostBtn.contains(e.target))) { S.menuOpen = false; renderMenu(); }
+    closePop(e);
+  }, true);
+
+  function trigger() { return hostBtn && hostBtn.isConnected ? hostBtn : fab; }
+
+  function placeMenu() {
+    var t = trigger();
+    if (t === fab) { menu.style.right = ''; return; }
+    var r = t.getBoundingClientRect();
+    menu.style.bottom = Math.max(12, window.innerHeight - r.top + 10) + 'px';
+    menu.style.right = Math.max(12, Math.min(window.innerWidth - 248, window.innerWidth - r.right - 8)) + 'px';
+  }
 
   function renderMenu() {
     menu.hidden = !S.menuOpen;
-    fab.setAttribute('aria-expanded', S.menuOpen);
+    trigger().setAttribute('aria-expanded', S.menuOpen);
     if (!S.menuOpen) return;
+    placeMenu();
     var n = S.comments.length;
     var opt = function (mode, label, sub) { return '<button type="button" role="menuitemradio" aria-checked="' + (S.mode === mode) + '" data-mode="' + mode + '"><span>' + label + '<small>' + sub + '</small></span></button>'; };
     menu.innerHTML = '<div class="cmtr-menu-head">' + (S.media ? (n === 1 ? '1 comment' : n + ' comments') + ' on this ' + (S.media.ids[0].indexOf('movie/') === 0 ? 'film' : 'episode') : 'Comments') + '</div>' +
-      opt('overlay', 'Overlay', 'Moments pop up in the corner') +
+      opt('overlay', 'Overlay', 'A small live panel in the corner') +
       opt('sidebar', 'Sidebar', 'Every comment, beside the video') +
       opt('off', 'Off', 'Hide comments while watching');
   }
@@ -321,15 +357,25 @@ window.__CMTR_CSS__ = "/* Commentarr player UI. Scoped under .cmtr-*; touches no
   function render() {
     if (!root.isConnected) return;
     var playing = !!A.getVideo();
-    fab.style.display = playing ? '' : 'none';
+    fab.style.display = playing && !(hostBtn && hostBtn.isConnected) ? '' : 'none';
     if (!playing) { corner.innerHTML = ''; removeSide(); return; }
 
-    // overlay: the corner shows featured moments and a compact composer
+    // overlay: a small, always-on panel of the latest moments, with a one-line composer
     if (S.mode === 'overlay') {
       removeSide();
-      if (!corner.querySelector('.cmtr-corner-bar')) {
-        corner.innerHTML = '<div class="cmtr-slot"></div><div class="cmtr-corner-bar"><button type="button" class="cmtr-btn ghost" data-open-compose>Comment</button><button type="button" class="cmtr-btn ghost" data-mode-to="sidebar">All comments</button></div>';
+      if (!corner.querySelector('.cmtr-mini')) {
+        corner.innerHTML =
+          '<section class="cmtr-mini" aria-label="Comments">' +
+            '<header class="cmtr-mini-head"><span class="cmtr-mini-label"></span>' +
+              '<button type="button" class="cmtr-icon" data-mode-to="sidebar" aria-label="Show all comments" title="All comments"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M9.5 2.5h4v4M13.5 2.5 9 7M6.5 13.5h-4v-4M2.5 13.5 7 9"/></svg></button>' +
+              '<button type="button" class="cmtr-icon" data-mode-to="off" aria-label="Hide comments" title="Hide">' + ICON.x + '</button></header>' +
+            '<div class="cmtr-mini-list" aria-live="polite"></div>' +
+            '<div class="cmtr-mini-compose"></div>' +
+          '</section>';
+        corner.querySelector('.cmtr-mini-compose').innerHTML = composerHtml('corner');
+        S.miniKey = null;
       }
+      renderMini();
     } else {
       corner.innerHTML = '';
     }
@@ -373,27 +419,43 @@ window.__CMTR_CSS__ = "/* Commentarr player UI. Scoped under .cmtr-*; touches no
   }
   function removeSide() { if (side) { side.remove(); side = null; } }
 
-  // ------------------------------------------------- featured moments --
-  // One comment at a time: the best-liked pinned comment in the last ~20 s, shown ~6 s,
-  // never more often than every 15 s. That is the "featured" stream; the list has the rest.
-  function tickFeatured() {
-    if (S.mode !== 'overlay' || !S.media) return;
-    var F = S.featured, now = Date.now();
-    var slot = corner.querySelector('.cmtr-slot'); if (!slot) return;
-    if (F.el && now - F.el._at > 6500) { var old = F.el; old.classList.add('is-out'); setTimeout(function () { old.remove(); }, 400); F.el = null; }
-    if (F.el || now - F.lastAt < 15000) return;
-    var pick = null;
-    S.comments.forEach(function (c) {
-      if (c.parentId || c.posMs == null || F.shown[c.id] || differentCut(c)) return;
-      if (c.posMs > S.posMs + 500 || c.posMs < S.posMs - 20000) return;
-      if (!pick || c.likes > pick.likes || (c.likes === pick.likes && c.posMs > pick.posMs)) pick = c;
-    });
-    if (!pick) return;
-    F.shown[pick.id] = true; F.lastAt = now;
-    var el = h('div', 'cmtr-feature', '<div class="cmtr-who"><b>' + esc(pick.author.name) + '</b><span>' + clock(pick.posMs) + (pick.likes ? ' · ' + pick.likes + ' like' + (pick.likes === 1 ? '' : 's') : '') + '</span></div><div class="cmtr-body">' + linkify(pick.body) + '</div>');
-    el._at = now;
-    slot.appendChild(el);
-    F.el = el;
+  // ------------------------------------------------- the live panel --
+  // The four latest moments you've passed, oldest at the top, the newest sliding in at the bottom
+  // as you reach it, like a live chat replay. Before the first pinned moment it shows the top
+  // whole-title comments instead, so the panel is never empty when there is something to read.
+  var MINI_MAX = 4;
+  function miniPick() {
+    var tops = S.comments.filter(function (c) { return !c.parentId; });
+    var moments = tops.filter(function (c) { return c.posMs != null && !differentCut(c) && c.posMs <= S.posMs + 500; })
+      .sort(function (a, b) { return a.posMs - b.posMs || a.createdAt - b.createdAt; });
+    if (moments.length) return { label: 'At this point', items: moments.slice(-MINI_MAX) };
+    var general = tops.filter(function (c) { return c.posMs == null; })
+      .sort(function (a, b) { return b.likes - a.likes || b.createdAt - a.createdAt; }).slice(0, MINI_MAX);
+    return { label: general.length ? 'Top comments' : '', items: general };
+  }
+
+  function renderMini() {
+    var box = corner.querySelector('.cmtr-mini'); if (!box) return;
+    var n = S.comments.length;
+    var pick = miniPick();
+    box.querySelector('.cmtr-mini-label').textContent = 'Comments' + (n ? ' · ' + n : '') + (pick.label ? ' · ' + pick.label : '');
+    var key = pick.items.map(function (c) { return c.id + ':' + c.likes; }).join(',') + '|' + (S.error || '');
+    if (key === S.miniKey) return;
+    var before = {};
+    box.querySelectorAll('.cmtr-mini-item').forEach(function (el) { before[el.getAttribute('data-id')] = true; });
+    S.miniKey = key;
+    var list = box.querySelector('.cmtr-mini-list');
+    if (S.error) { list.innerHTML = '<p class="cmtr-mini-empty">' + esc(S.error) + '</p>'; return; }
+    if (!pick.items.length) {
+      list.innerHTML = '<p class="cmtr-mini-empty">' + (n ? 'Comments show up here as you reach their moment.' : 'No comments yet. Say something about this moment.') + '</p>';
+      return;
+    }
+    list.innerHTML = pick.items.map(function (c) {
+      return '<div class="cmtr-mini-item' + (before[c.id] ? '' : ' is-new') + '" data-id="' + c.id + '">' +
+        (c.posMs != null ? '<button type="button" class="cmtr-time" data-seek="' + c.posMs + '" aria-label="Jump to ' + clock(c.posMs) + '">' + clock(c.posMs) + '</button> ' : '') +
+        '<b>' + esc(c.author.name) + '</b> ' + linkify(c.body) +
+        (c.likes ? ' <span class="cmtr-mini-likes">' + c.likes + ' ♥</span>' : '') + '</div>';
+    }).join('');
   }
 
   // ------------------------------------------------------------ actions --
@@ -410,11 +472,6 @@ window.__CMTR_CSS__ = "/* Commentarr player UI. Scoped under .cmtr-*; touches no
     if ((t = e.target.closest('[data-like]'))) { like(Number(t.getAttribute('data-like'))); return; }
     if ((t = e.target.closest('[data-more]'))) { e.stopPropagation(); openPop(t, Number(t.getAttribute('data-more'))); return; }
     if (e.target.closest('[data-rename]')) { rename(); return; }
-    if (e.target.closest('[data-open-compose]')) {
-      var bar = corner.querySelector('.cmtr-corner-bar');
-      if (!corner.querySelector('form')) { var w = h('div', '', composerHtml('corner')); corner.insertBefore(w.firstChild, bar); }
-      focusComposer();
-    }
   });
 
   root.addEventListener('submit', function (e) {
@@ -431,7 +488,8 @@ window.__CMTR_CSS__ = "/* Commentarr player UI. Scoped under .cmtr-*; touches no
     }).then(function (c) {
       ta.value = ''; S.replyTo = null; S.pinNow = null;
       if (!S.comments.some(function (x) { return x.id === c.id; })) { c.isNew = true; S.comments.unshift(c); }
-      if (form.getAttribute('data-where') === 'corner') form.remove();
+      // A comment pinned to now belongs in the live panel straight away.
+      S.miniKey = null;
       render();
     }, function (x) { err.textContent = x.message; }).then(function () { btn.disabled = false; });
   });
@@ -505,19 +563,26 @@ window.__CMTR_CSS__ = "/* Commentarr player UI. Scoped under .cmtr-*; touches no
 
   // ---------------------------------------------------------- main loop --
   function placeFab() {
+    // Prefer a button in the host's own control row; fall back to the floating one.
+    hostBtn = A.mountButton ? A.mountButton() : null;
+    if (hostBtn && !hostBtn._cmtr) { hostBtn._cmtr = true; hostBtn.addEventListener('click', toggleMenu); }
+    var typing = !!root.querySelector('form.cmtr-compose textarea:focus');
+    var controls = A.controlsVisible();
+    if (hostBtn && hostBtn.isConnected) {
+      fab.style.display = 'none';
+      hostBtn.classList.toggle('cmtr-on', S.mode !== 'off');
+      if (S.menuOpen) placeMenu();
+      return;
+    }
+    fab.style.display = '';
     var top = A.controlsTop && A.controlsTop();
     var phone = window.innerWidth <= 640;
     var bottom = top ? Math.max(phone ? 120 : 96, window.innerHeight - top + 14) : (phone ? 132 : 112);
     fab.style.bottom = bottom + 'px';
     menu.style.bottom = (bottom + 54) + 'px';
-    var typing = !!root.querySelector('form.cmtr-compose textarea:focus');
-    var controls = A.controlsVisible();
     // The sidebar has its own close button; the round button would sit on top of it.
     fab.style.visibility = S.mode === 'sidebar' ? 'hidden' : '';
     fab.classList.toggle('is-idle', !(S.menuOpen || controls || typing));
-    // In overlay mode only the featured moment stays up; its buttons come and go with the controls.
-    var bar = corner.querySelector('.cmtr-corner-bar');
-    if (bar) bar.style.visibility = controls || typing || corner.querySelector('form') ? '' : 'hidden';
   }
 
   var lastKey = null, lastRender = 0;
@@ -535,13 +600,13 @@ window.__CMTR_CSS__ = "/* Commentarr player UI. Scoped under .cmtr-*; touches no
       if (!m) return;
       if (m.key !== lastKey) {
         lastKey = m.key;
-        S.media = m; S.comments = []; S.featured = { shown: {}, lastAt: 0, el: null }; S.revealed = {}; S.replyTo = null;
+        S.media = m; S.comments = []; S.miniKey = null; S.revealed = {}; S.replyTo = null;
         fab.querySelector('.cmtr-fab-count').textContent = '';
         api('GET', '/me').then(function (me) { S.me = me; render(); }, function (e) { S.error = e.message; render(); });
         if (m.ids.length) { loadComments(); openStream(); } else render();
       }
     }, function () { });
-    tickFeatured();
+    if (S.mode === 'overlay') renderMini();
     // keep the "At 18:32" chip and the Now marker moving, without re-rendering every frame
     if (Date.now() - lastRender > 1000) { lastRender = Date.now(); if (S.mode === 'sidebar' && side && !side.contains(document.activeElement)) renderSide(); else if (side) { var chip = side.querySelector('[data-pin]'); if (chip) chip.textContent = 'At ' + clock(S.posMs); } var cc = corner.querySelector('[data-pin]'); if (cc) cc.textContent = 'At ' + clock(S.posMs); }
   }

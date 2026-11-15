@@ -31,6 +31,8 @@ Tap the comments button in the player controls for three choices:
 
 **Spoilers.** Tap *Spoiler* before posting to cover your comment until someone chooses to read it; you (or your server's admin) can mark or unmark it later from the ••• menu. Viewers can also turn on *Hide ahead* to cover comments pinned to moments they haven't reached yet and comments from later episodes.
 
+**Watching on a TV.** TV apps (Android TV, Roku, Apple TV, webOS…) can't show the panel themselves, so use your phone as a second screen. Open Jellyfin on your phone in the browser or the Jellyfin app while something plays on your TV, and a **Comments** pill appears at the bottom. Tap it for the full comment panel, following the TV to within a fraction of a second. Pinned comments arrive as the TV reaches them, posting pins to the TV's moment, tapping a time jumps the TV there, and **Play/Pause** controls it. With more than one device playing, tap the device name to switch.
+
 **Different cuts.** Comments remember the length of the file they were written on. If yours is a different cut (extended, theatrical…), pinned comments say so, since their moment might not line up.
 
 ## Moderation (for Jellyfin admins)

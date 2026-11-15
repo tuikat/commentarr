@@ -277,11 +277,15 @@
   function render() {
     if (!root.isConnected) return;
     var playing = !!A.getVideo();
-    fab.style.display = playing && !(hostBtn && hostBtn.isConnected) ? '' : 'none';
+    // second screen: the full panel, filling a phone, following another device's playback
+    var comp = !!(A.companion && A.companion());
+    var mode = comp ? 'sidebar' : S.mode;
+    root.classList.toggle('cmtr-companion', comp);
+    fab.style.display = playing && !comp && !(hostBtn && hostBtn.isConnected) ? '' : 'none';
     if (!playing) { corner.innerHTML = ''; removeSide(); squeeze(false); return; }
 
     // overlay: a small, always-on panel of the latest moments, with a one-line composer
-    if (S.mode === 'overlay') {
+    if (mode === 'overlay') {
       removeSide();
       if (!corner.querySelector('.cmtr-mini')) {
         corner.innerHTML =
@@ -300,8 +304,8 @@
       corner.innerHTML = '';
     }
 
-    if (S.mode === 'sidebar') renderSide(); else removeSide();
-    squeeze(S.mode === 'sidebar' && window.innerWidth >= 900);
+    if (mode === 'sidebar') renderSide(); else removeSide();
+    squeeze(mode === 'sidebar' && !comp && window.innerWidth >= 900);
     if (S.menuOpen) renderMenu();
   }
 
@@ -323,6 +327,7 @@
     }
     var sub = S.media ? (S.media.title + (S.media.subtitle ? ' · ' + S.media.subtitle : '')) : '';
     side.querySelector('.cmtr-sub').textContent = sub;
+    remoteBar();
     side.querySelectorAll('[data-sort]').forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-sort') === S.sort); });
     var sp = side.querySelector('[data-spoilers]');
     sp.setAttribute('aria-pressed', S.spoilers);
@@ -340,10 +345,24 @@
   }
   function removeSide() { if (side) { side.remove(); side = null; } }
 
+  // Second screen: which device we're following, where it is, and play/pause for it.
+  function remoteBar() {
+    var comp = A.companion && A.companion();
+    var bar = side.querySelector('.cmtr-remote');
+    if (!comp) { if (bar) bar.remove(); return; }
+    if (!bar) { bar = h('div', 'cmtr-remote'); side.querySelector('.cmtr-side-head').appendChild(bar); }
+    var i = A.companionInfo();
+    var html = '<span class="cmtr-remote-where">' + (i.others ? '<button type="button" data-remote="next" title="Follow another device">' : '<span>') +
+        '<i class="cmtr-dot' + (i.paused ? ' is-paused' : '') + '"></i>' + (i.paused ? 'Paused' : 'Playing') + ' on ' + esc(i.device) + (i.others ? ' ›</button>' : '</span>') +
+        ' <b>' + clock(S.posMs) + '</b></span>' +
+      (i.canControl ? '<button type="button" class="cmtr-chip" data-remote="' + (i.paused ? 'unpause' : 'pause') + '">' + (i.paused ? 'Play' : 'Pause') + '</button>' : '');
+    if (bar._html !== html) { bar._html = html; bar.innerHTML = html; }
+  }
+
   // On a wide screen the sidebar sits beside the picture instead of over it: the player shrinks
   // to the space on the left (the video keeps its aspect ratio), and springs back when it closes.
   function squeeze(on) { document.documentElement.classList.toggle('cmtr-squeeze', !!on); }
-  window.addEventListener('resize', function () { if (S.mode === 'sidebar' && side) squeeze(window.innerWidth >= 900); });
+  window.addEventListener('resize', function () { if (S.mode === 'sidebar' && side && !(A.companion && A.companion())) squeeze(window.innerWidth >= 900); });
 
   // ------------------------------------------------- the live panel --
   // Up to four comments, like a live chat replay:
@@ -449,7 +468,15 @@
   root.addEventListener('click', function (e) {
     var t;
     if ((t = e.target.closest('[data-seek]'))) { e.preventDefault(); A.seek(Number(t.getAttribute('data-seek'))); return; }
-    if ((t = e.target.closest('[data-mode-to]'))) { setMode(t.getAttribute('data-mode-to')); return; }
+    if ((t = e.target.closest('[data-remote]'))) {
+      var act = t.getAttribute('data-remote');
+      if (act === 'next') A.nextDevice(); else A.remote(act).catch(function (x) { alert(x.message); });
+      render(); return;
+    }
+    if ((t = e.target.closest('[data-mode-to]'))) {
+      if (A.companion && A.companion() && t.getAttribute('data-mode-to') === 'off') { A.closeCompanion(); render(); return; }
+      setMode(t.getAttribute('data-mode-to')); return;
+    }
     if ((t = e.target.closest('[data-sort]'))) { S.sort = t.getAttribute('data-sort'); setPref('sort', S.sort); if (S.sort === 'time') render(); else loadComments(); return; }
     if (e.target.closest('[data-spoilers]')) { S.spoilers = !S.spoilers; setPref('spoilers', S.spoilers); render(); return; }
     if ((t = e.target.closest('[data-reveal]'))) { S.revealed[t.getAttribute('data-reveal')] = true; S.miniKey = null; render(); return; }
@@ -563,6 +590,7 @@
     // Prefer a button in the host's own control row; fall back to the floating one.
     hostBtn = A.mountButton ? A.mountButton() : null;
     if (hostBtn && !hostBtn._cmtr) { hostBtn._cmtr = true; hostBtn.addEventListener('click', toggleMenu); }
+    if (A.companion && A.companion()) { fab.style.display = 'none'; return; }
     var typing = !!root.querySelector('form.cmtr-compose textarea:focus');
     var controls = A.controlsVisible();
     if (hostBtn && hostBtn.isConnected) {
@@ -612,7 +640,7 @@
     }, function () { });
     if (S.mode === 'overlay') renderMini();
     // keep the "At 18:32" chip and the Now marker moving, without re-rendering every frame
-    if (Date.now() - lastRender > 1000) { lastRender = Date.now(); if (S.mode === 'sidebar' && side && !side.contains(document.activeElement)) renderSide(); else if (side) { var chip = side.querySelector('[data-pin]'); if (chip) chip.textContent = 'At ' + clock(S.posMs); } var cc = corner.querySelector('[data-pin]'); if (cc) cc.textContent = 'At ' + clock(S.posMs); }
+    if (Date.now() - lastRender > 1000) { lastRender = Date.now(); if (side) remoteBar(); if ((S.mode === 'sidebar' || (A.companion && A.companion())) && side && !side.contains(document.activeElement)) renderSide(); else if (side) { var chip = side.querySelector('[data-pin]'); if (chip) chip.textContent = 'At ' + clock(S.posMs); } var cc = corner.querySelector('[data-pin]'); if (cc) cc.textContent = 'At ' + clock(S.posMs); }
   }
 
   function boot() {

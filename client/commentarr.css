@@ -138,8 +138,10 @@
 .cmtr-acts button:hover { color: var(--c-text); background: var(--c-fill); }
 .cmtr-acts button[aria-pressed="true"] { color: var(--c-text); }
 .cmtr-note { color: var(--c-text-3); font-size: 12px; }
-.cmtr-spoiler .cmtr-body { filter: blur(6px); user-select: none; }
-.cmtr-reveal { border: 0; background: var(--c-fill); border-radius: 999px; font-size: 12px; font-weight: 600; padding: 2px 9px; cursor: pointer; margin-top: 4px; }
+.cmtr-reveal { border: 0; background: var(--c-fill); color: var(--c-text-2); border-radius: 999px; font: inherit; font-size: 12px; font-weight: 600; padding: 2px 10px; cursor: pointer; margin-top: 4px; }
+.cmtr-reveal:hover { color: var(--c-text); }
+.cmtr-mini-item .cmtr-reveal { margin-top: 0; font-size: 11.5px; line-height: 18px; padding: 0 8px; }
+.cmtr-chips { display: inline-flex; gap: 6px; flex-wrap: wrap; }
 
 .cmtr-now { display: flex; align-items: center; gap: 8px; margin: 6px 10px; color: var(--c-accent); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .cmtr-now::before, .cmtr-now::after { content: ""; flex: 1; height: 1px; background: currentColor; opacity: 0.6; }

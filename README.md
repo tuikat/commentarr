@@ -29,7 +29,7 @@ Tap the comments button in the player controls for three choices:
 
 **Pinned comments.** Tap the `At 18:32` chip before posting to pin a comment to that moment, so it pops up for everyone at that exact point (a small dot shows it's on). Comments aren't pinned unless you choose to. Typing a time like `1:02:10` in any comment turns it into a jump link.
 
-**Spoilers.** Off by default. Turn on *Spoilers hidden* in the sidebar to blur comments pinned to moments you haven't reached yet.
+**Spoilers.** Tap *Spoiler* before posting to cover your comment until someone chooses to read it; you (or your server's admin) can mark or unmark it later from the ••• menu. Viewers can also turn on *Hide ahead* to cover comments pinned to moments they haven't reached yet and comments from later episodes.
 
 **Different cuts.** Comments remember the length of the file they were written on. If yours is a different cut (extended, theatrical…), pinned comments say so, since their moment might not line up.
 

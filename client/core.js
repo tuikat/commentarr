@@ -27,8 +27,8 @@
     auth: null, me: null, media: null, comments: [], loadedKey: null,
     mode: pref('mode', 'overlay'),      // overlay | sidebar | off
     sort: pref('sort', 'top'),           // top | new
-    spoilers: pref('spoilers', false),   // hide pinned comments you haven't reached yet
-    menuOpen: false, replyTo: null, pinNow: null, revealed: {},
+    spoilers: pref('spoilers', false),   // also blur comments pinned ahead of you (and from later episodes)
+    menuOpen: false, replyTo: null, pinNow: null, spoilNow: false, revealed: {},
     miniKey: null,
     es: null, posMs: 0, error: '',
   };
@@ -71,6 +71,7 @@
     c.runtimeMs = c.runtimeMs == null ? null : num(c.runtimeMs);
     c.author = c.author && typeof c.author === 'object' ? c.author : { name: 'Viewer', server: '' };
     c.fromEpisode = c.fromEpisode == null ? null : String(c.fromEpisode);
+    c.spoiler = c.spoiler === true;
     return c;
   }
   function cleanAll(list) { return (Array.isArray(list) ? list : []).map(clean).filter(Boolean); }
@@ -184,6 +185,11 @@
         S.comments = S.comments.filter(function (x) { return x.id !== id && x.parentId !== id; });
         render();
       });
+      es.addEventListener('spoiler', function (ev) {
+        var d; try { d = JSON.parse(ev.data); } catch (e) { return; }
+        [S.comments, S.related || []].forEach(function (list) { list.forEach(function (x) { if (x.id === Number(d.id)) x.spoiler = d.spoiler === true; }); });
+        S.miniKey = null; render();
+      });
       es.onerror = function () { if (es.readyState === 2) { S.es = null; setTimeout(function () { if (S.media && !S.es) openStream(); }, 10000); } };
     }).catch(function () { });
   }
@@ -192,15 +198,34 @@
   // ---------------------------------------------------------- rendering --
   function isMovie() { return S.media && S.media.ids[0].indexOf('movie/') === 0; }
   function differentCut(c) { return c.posMs != null && c.runtimeMs && S.media && S.media.runtimeMs && Math.abs(c.runtimeMs - S.media.runtimeMs) / S.media.runtimeMs > 0.03; }
-  function hiddenAsSpoiler(c) { return S.spoilers && c.posMs != null && c.posMs > S.posMs + 1000 && !S.revealed[c.id]; }
+  // Is this episode later than the one playing? (S01E05 vs tv/tvdb/…/s1e3)
+  function laterEpisode(label) {
+    var m = /S(\d+)E(\d+)/.exec(label || ''), here = S.media && /s(\d+)e(\d+)$/.exec(S.media.ids[0] || '');
+    if (!m || !here) return false;
+    return Number(m[1]) * 10000 + Number(m[2]) > Number(here[1]) * 10000 + Number(here[2]);
+  }
+  // Why a comment is covered, or '' when it isn't. The writer's own spoiler flag always covers it;
+  // the viewer's "Blur ahead" setting also covers moments they haven't reached and later episodes.
+  function concealed(c) {
+    if (c.mine || S.revealed[poolKey(c)]) return '';
+    if (c.spoiler) return 'Spoiler';
+    if (!S.spoilers) return '';
+    if (c.fromEpisode ? laterEpisode(c.fromEpisode) : (c.posMs != null && c.posMs > S.posMs + 1000)) return 'Ahead of you';
+    return '';
+  }
+  function revealBtn(c, why) {
+    var where = c.fromEpisode ? ' in ' + esc(c.fromEpisode) : (c.posMs != null ? ' at ' + clock(c.posMs) : '');
+    return '<button type="button" class="cmtr-reveal" data-reveal="' + poolKey(c) + '" aria-label="' + why + where + ', show it">' + why + where + ' · Show</button>';
+  }
 
   function itemHtml(c) {
-    var spoiler = hiddenAsSpoiler(c);
+    var why = concealed(c);
     var server = c.author.sameServer ? '' : ' · ' + esc(c.author.server);
-    return '<div class="cmtr-item' + (spoiler ? ' cmtr-spoiler' : '') + (c.isNew ? ' is-new' : '') + '" data-id="' + c.id + '">' +
-      '<div class="cmtr-who"><b>' + esc(c.author.name) + (c.mine ? ' (you)' : '') + '</b><span>' + server + ' · ' + ago(c.createdAt) + '</span></div>' +
-      '<div class="cmtr-body">' + (c.posMs != null ? '<button type="button" class="cmtr-time" data-seek="' + c.posMs + '" aria-label="Jump to ' + clock(c.posMs) + '">' + clock(c.posMs) + '</button> ' : '') + linkify(c.body) + '</div>' +
-      (spoiler ? '<button type="button" class="cmtr-reveal" data-reveal="' + c.id + '">Spoiler at ' + clock(c.posMs) + ' · show</button>' : '') +
+    // A covered comment's text is not in the page at all until it's revealed: no blur to squint through.
+    return '<div class="cmtr-item' + (why ? ' cmtr-spoiler' : '') + (c.isNew ? ' is-new' : '') + '" data-id="' + c.id + '">' +
+      '<div class="cmtr-who"><b>' + esc(c.author.name) + (c.mine ? ' (you)' : '') + '</b><span>' + server + ' · ' + ago(c.createdAt) + (c.spoiler && !why ? ' · spoiler' : '') + '</span></div>' +
+      (why ? revealBtn(c, why)
+        : '<div class="cmtr-body">' + (c.posMs != null ? '<button type="button" class="cmtr-time" data-seek="' + c.posMs + '" aria-label="Jump to ' + clock(c.posMs) + '">' + clock(c.posMs) + '</button> ' : '') + linkify(c.body) + '</div>') +
       (differentCut(c) ? '<div class="cmtr-note">Written on a different cut, so the moment may be off.</div>' : '') +
       '<div class="cmtr-acts">' +
         '<button type="button" data-like="' + c.id + '" aria-pressed="' + !!c.liked + '">' + (c.liked ? 'Liked' : 'Like') + (c.likes ? ' · ' + c.likes : '') + '</button>' +
@@ -241,7 +266,10 @@
       (reply ? '<div class="cmtr-replying"><span>Replying to ' + esc(reply.author.name) + '</span><button type="button" data-cancel-reply>Cancel</button></div>' : '') +
       '<textarea class="cmtr-input" rows="1" maxlength="1000" placeholder="' + (S.me && S.me.canPost === false ? 'Commenting is turned off for you' : 'Comment as ' + name + '…') + '" aria-label="Write a comment"' + (S.me && S.me.canPost === false ? ' disabled' : '') + '></textarea>' +
       '<div class="cmtr-compose-bar">' +
-        (reply ? '<span></span>' : '<button type="button" class="cmtr-chip" data-pin aria-pressed="' + pin + '" title="Show this comment at this moment for everyone">At ' + clock(S.posMs) + '</button>') +
+        '<span class="cmtr-chips">' +
+          (reply ? '' : '<button type="button" class="cmtr-chip" data-pin aria-pressed="' + pin + '" title="Show this comment at this moment for everyone">At ' + clock(S.posMs) + '</button>') +
+          '<button type="button" class="cmtr-chip" data-spoil aria-pressed="' + !!S.spoilNow + '" title="Cover this comment until someone chooses to read it">Spoiler</button>' +
+        '</span>' +
         '<button type="submit" class="cmtr-btn">Post</button>' +
       '</div><div class="cmtr-err" role="alert"></div></form>';
   }
@@ -298,8 +326,8 @@
     side.querySelectorAll('[data-sort]').forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-sort') === S.sort); });
     var sp = side.querySelector('[data-spoilers]');
     sp.setAttribute('aria-pressed', S.spoilers);
-    sp.title = S.spoilers ? 'Comments pinned ahead of you are blurred' : 'Blur comments pinned ahead of where you are';
-    sp.textContent = S.spoilers ? 'Spoilers hidden' : 'Spoilers shown';
+    sp.title = S.spoilers ? 'Comments pinned ahead of you, and from later episodes, are covered' : 'Also cover comments pinned ahead of where you are, and from later episodes. Comments marked as spoilers are always covered.';
+    sp.textContent = 'Hide ahead';
     var slot = side.querySelector('.cmtr-slot-compose');
     var form = slot.querySelector('form');
     var keep = form && document.activeElement === form.querySelector('textarea');
@@ -384,8 +412,9 @@
   function miniItem(c, isNew) {
     var tag = c.fromEpisode ? '<span class="cmtr-from">' + esc(c.fromEpisode) + '</span> '
       : (c.posMs != null ? '<button type="button" class="cmtr-time" data-seek="' + c.posMs + '" aria-label="Jump to ' + clock(c.posMs) + '">' + clock(c.posMs) + '</button> ' : '');
-    return '<div class="cmtr-mini-item' + (isNew ? ' is-new' : '') + (c.posMs == null || c.fromEpisode ? ' is-filler' : '') + '" data-id="' + poolKey(c) + '">' + tag +
-      '<b>' + esc(c.author.name) + '</b> ' + linkify(c.body) +
+    var why = concealed(c);
+    return '<div class="cmtr-mini-item' + (isNew ? ' is-new' : '') + (c.posMs == null || c.fromEpisode ? ' is-filler' : '') + '" data-id="' + poolKey(c) + '">' + (why ? '' : tag) +
+      '<b>' + esc(c.author.name) + '</b> ' + (why ? revealBtn(c, why) : linkify(c.body)) +
       (c.likes ? ' <span class="cmtr-mini-likes">' + c.likes + ' ♥</span>' : '') + '</div>';
   }
 
@@ -402,7 +431,7 @@
     var hide = !!quiet.since && Date.now() - quiet.since > QUIET_HIDE_MS;
     if (hide !== quiet.hidden) { quiet.hidden = hide; corner.classList.toggle('is-resting', hide); }
 
-    var key = pick.items.map(function (c) { return poolKey(c) + ':' + c.likes; }).join(',') + '|' + (S.error || '');
+    var key = pick.items.map(function (c) { return poolKey(c) + ':' + c.likes + (concealed(c) ? 's' : ''); }).join(',') + '|' + (S.error || '');
     if (key === S.miniKey) return;
     var before = {};
     box.querySelectorAll('.cmtr-mini-item').forEach(function (el) { before[el.getAttribute('data-id')] = true; });
@@ -423,7 +452,8 @@
     if ((t = e.target.closest('[data-mode-to]'))) { setMode(t.getAttribute('data-mode-to')); return; }
     if ((t = e.target.closest('[data-sort]'))) { S.sort = t.getAttribute('data-sort'); setPref('sort', S.sort); if (S.sort === 'time') render(); else loadComments(); return; }
     if (e.target.closest('[data-spoilers]')) { S.spoilers = !S.spoilers; setPref('spoilers', S.spoilers); render(); return; }
-    if ((t = e.target.closest('[data-reveal]'))) { S.revealed[t.getAttribute('data-reveal')] = true; render(); return; }
+    if ((t = e.target.closest('[data-reveal]'))) { S.revealed[t.getAttribute('data-reveal')] = true; S.miniKey = null; render(); return; }
+    if ((t = e.target.closest('[data-spoil]'))) { S.spoilNow = t.getAttribute('aria-pressed') !== 'true'; root.querySelectorAll('[data-spoil]').forEach(function (b) { b.setAttribute('aria-pressed', S.spoilNow); }); return; }
     if ((t = e.target.closest('[data-pin]'))) { S.pinNow = t.getAttribute('aria-pressed') !== 'true'; t.setAttribute('aria-pressed', S.pinNow); return; }
     if ((t = e.target.closest('[data-reply]'))) { S.replyTo = Number(t.getAttribute('data-reply')); if (S.mode !== 'sidebar') setMode('sidebar'); else { var f = side.querySelector('.cmtr-slot-compose'); f.innerHTML = composerHtml('side'); } focusComposer(); return; }
     if (e.target.closest('[data-cancel-reply]')) { S.replyTo = null; if (side) side.querySelector('.cmtr-slot-compose').innerHTML = composerHtml('side'); return; }
@@ -440,13 +470,15 @@
     if (!S.media || !S.media.ids.length) { form.querySelector('.cmtr-err').textContent = 'Still working out which title this is. Try again in a moment.'; return; }
     var chip = form.querySelector('[data-pin]');
     var pinned = !S.replyTo && chip && chip.getAttribute('aria-pressed') === 'true';
+    var spoil = form.querySelector('[data-spoil]');
+    var spoiler = !!spoil && spoil.getAttribute('aria-pressed') === 'true';
     btn.disabled = true; err.textContent = '';
     api('POST', '/comments', {
       ids: S.media.ids, title: S.media.title + (S.media.subtitle ? ' ' + S.media.subtitle : ''),
-      body: body, posMs: pinned ? Math.round(S.posMs) : null, runtimeMs: S.media.runtimeMs || null, parentId: S.replyTo,
+      body: body, posMs: pinned ? Math.round(S.posMs) : null, runtimeMs: S.media.runtimeMs || null, parentId: S.replyTo, spoiler: spoiler,
     }).then(function (c) {
       c = clean(c);
-      ta.value = ''; S.replyTo = null; S.pinNow = null;
+      ta.value = ''; S.replyTo = null; S.pinNow = null; S.spoilNow = false;
       if (!S.comments.some(function (x) { return x.id === c.id; })) { c.isNew = true; S.comments.unshift(c); }
       // A comment pinned to now belongs in the live panel straight away.
       S.miniKey = null; quiet.since = 0;
@@ -484,6 +516,7 @@
     var items = [];
     // Destructive last, so a quick tap never lands on it.
     if (c.posMs != null) items.push(['seek', 'Jump to ' + clock(c.posMs)]);
+    if (c.canDelete) items.push(['spoiler', c.spoiler ? 'Not a spoiler' : 'Mark as spoiler']);
     if (!c.mine) items.push(['report', 'Report…']);
     if (c.canHide && !c.mine) items.push(['hide', 'Hide on my server']);
     if (c.canDelete) items.push(['delete', c.mine ? 'Delete comment' : 'Delete (your server\'s user)']);
@@ -497,12 +530,15 @@
       var act = b.getAttribute('data-act');
       closePop();
       if (act === 'seek') return A.seek(c.posMs);
+      if (act === 'spoiler') {
+        api('POST', '/comments/' + id + '/spoiler', { spoiler: !c.spoiler }).then(function (r) { c.spoiler = r.spoiler === true; S.miniKey = null; render(); }, function (x) { alert(x.message); });
+      }
       if (act === 'delete') {
         if (!confirm('Delete this comment for everyone?')) return;
         api('DELETE', '/comments/' + id).then(function () { S.comments = S.comments.filter(function (x) { return x.id !== id && x.parentId !== id; }); render(); }, function (x) { alert(x.message); });
       }
       if (act === 'report') {
-        var reason = prompt('Why are you reporting this comment? (spam, abuse, spoiler without a timestamp…)', '');
+        var reason = prompt('Why are you reporting this comment? (spam, abuse, an unmarked spoiler…)', '');
         if (reason == null) return;
         api('POST', '/comments/' + id + '/report', { reason: reason }).then(function () { alert('Thanks, the moderators will take a look.'); }, function (x) { alert(x.message); });
       }

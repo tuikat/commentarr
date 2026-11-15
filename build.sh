@@ -1,7 +1,8 @@
 #!/bin/bash
 # Builds the Commentarr Jellyfin plugin and the Plex userscript.
 #   ./build.sh                 -> dist/commentarr_<ver>.zip, dist/commentarr-plex.user.js, manifest entry
-#   ./build.sh install         -> also installs into the local Jellyfin (this box) and restarts it
+#   ./build.sh install         -> also installs into a local Jellyfin and restarts it. Set
+#                                 JELLYFIN_PLUGINS (its data/plugins folder) and JELLYFIN_CONTAINER.
 # Needs: node 22+, docker (the .NET 9 SDK runs in a container).
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -22,10 +23,12 @@ JSON
 rm -rf "$STAGE"
 echo "built $ZIP  md5 $(md5sum "$ZIP" | cut -d' ' -f1)"
 if [ "${1:-}" = install ]; then
-  DEST="/mnt/user/appdata/jellyfin/data/plugins/Commentarr_$VER"
-  docker stop jellyfin >/dev/null
-  rm -rf /mnt/user/appdata/jellyfin/data/plugins/Commentarr_*
+  PLUGINS=${JELLYFIN_PLUGINS:?set JELLYFIN_PLUGINS to your Jellyfin data/plugins folder}
+  CONTAINER=${JELLYFIN_CONTAINER:-jellyfin}
+  DEST="$PLUGINS/Commentarr_$VER"
+  docker stop "$CONTAINER" >/dev/null
+  rm -rf "$PLUGINS"/Commentarr_*
   mkdir -p "$DEST" && unzip -qo "$ZIP" -d "$DEST" && chown -R 99:100 "$DEST"
-  docker start jellyfin >/dev/null
+  docker start "$CONTAINER" >/dev/null
   echo "installed to $DEST; Jellyfin restarting"
 fi

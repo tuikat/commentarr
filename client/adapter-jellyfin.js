@@ -7,7 +7,7 @@
     return fetch(C().getUrl(path), { headers: headers(), cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error('Jellyfin ' + r.status); return r.json(); });
   };
 
-  var media = { forItem: null, value: null, pending: null, checkedAt: 0, sessionId: null };
+  var media = { forItem: null, value: null, pending: null, checkedAt: 0, sessionId: null, stale: null };
 
   function idsFor(item, series) {
     var ids = [];
@@ -24,14 +24,48 @@
     return ids;
   }
 
-  // Which item is this browser playing? Ask Jellyfin for this device's session.
-  function nowPlaying() {
+  // Which item is this browser playing?
+  // 1. The stream itself: every request the player makes is /videos/<item id>/... (HLS segments,
+  //    direct streams). That is always the current video, from its first second.
+  // 2. Jellyfin's session for this device: only as a fallback, because it lags a few seconds
+  //    behind a new video and still names the previous one in that window.
+  var streamId = null;
+  var since = 0;   // performance.now() when the current playback began; older requests belong to the last video
+  var VIDEO_URL = /\/videos\/([0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12})\//i;
+  try {
+    new PerformanceObserver(function (list) {
+      list.getEntries().forEach(function (e) {
+        if (e.startTime < since) return;
+        var m = VIDEO_URL.exec(e.name);
+        if (m) streamId = m[1].replace(/-/g, '').toLowerCase();
+      });
+    }).observe({ type: 'resource', buffered: true });
+    // A long video makes thousands of segment requests; keep the browser's timing buffer from
+    // filling up, or new requests stop being reported at all.
+    performance.setResourceTimingBufferSize && performance.setResourceTimingBufferSize(3000);
+    performance.addEventListener && performance.addEventListener('resourcetimingbufferfull', function () { performance.clearResourceTimings(); });
+  } catch (e) { /* very old browser: session fallback only */ }
+
+  function sessionPlaying() {
     var c = C();
     return get('Sessions?deviceId=' + encodeURIComponent(c.deviceId())).then(function (list) {
       var s = (list || []).find(function (x) { return x.NowPlayingItem; });
       media.sessionId = s ? s.Id : null;
-      return s ? s.NowPlayingItem.Id : null;
+      return s ? String(s.NowPlayingItem.Id).replace(/-/g, '').toLowerCase() : null;
     });
+  }
+
+  // A new <video> source means a new playback: forget everything about the last one.
+  var lastSrc = null;
+  function playbackChanged() {
+    var v = document.querySelector('video.htmlvideoplayer') || document.querySelector('.videoPlayerContainer video');
+    var src = v ? (v.currentSrc || v.src || '') : '';
+    if (src && src !== lastSrc) {
+      var changed = lastSrc !== null;
+      lastSrc = src;
+      return changed;
+    }
+    return false;
   }
 
   function resolve(itemId) {
@@ -53,6 +87,9 @@
     });
   }
 
+  // for bug reports: window.__commentarrState() in the browser console
+  window.__commentarrState = function () { return { streamId: streamId, since: Math.round(since), now: Math.round(performance.now()), stale: media.stale, forItem: media.forItem, lastSrc: lastSrc, session: media.sessionId }; };
+
   window.CommentarrAdapter = {
     getAuth: function () {
       return get('Commentarr/Token').then(function (r) {
@@ -61,12 +98,28 @@
     },
 
     getMedia: function () {
-      // Re-check what's playing every few seconds (next episode, autoplay); otherwise reuse.
+      // On a new playback, the previous item is the one answer we must never accept again until
+      // the stream confirms it (replaying the same title is the only case where it is right).
+      if (playbackChanged()) { media.stale = media.forItem; media.value = null; media.forItem = null; streamId = null; since = performance.now() - 2000; }
+      if (streamId && streamId === media.stale) media.stale = null;
+      // The stream names the item directly; trust it whenever it disagrees with what we have.
+      if (streamId && streamId !== media.forItem && !media.pending) {
+        var sid = streamId;
+        media.pending = resolve(sid).then(function (m) { media.forItem = sid; media.value = m; media.checkedAt = Date.now(); return m; })
+          .catch(function () { return null; }) // e.g. an alternate version's media source id
+          .then(function (v) { media.pending = null; return v; });
+        sessionPlaying().catch(function () { }); // keeps sessionId fresh for seeking
+        return media.pending;
+      }
       if (media.pending) return media.pending;
       if (media.value && Date.now() - media.checkedAt < 4000) return Promise.resolve(media.value);
-      media.pending = nowPlaying().then(function (id) {
+      media.pending = sessionPlaying().then(function (id) {
         media.checkedAt = Date.now();
         if (!id) return media.value;
+        // While the stream says otherwise, the session is the stale one.
+        if (streamId && id !== streamId) return media.value;
+        // Right after switching videos the session still names the previous one: wait for the stream.
+        if (!streamId && id === media.stale) return null;
         if (id === media.forItem && media.value) return media.value;
         return resolve(id).then(function (m) { media.forItem = id; media.value = m; return m; });
       }).catch(function () { return media.value; }).then(function (v) { media.pending = null; return v; });

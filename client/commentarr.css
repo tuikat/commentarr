@@ -149,8 +149,10 @@
 .cmtr-input { width: 100%; resize: none; border: 0; background: transparent; color: var(--c-text); font: inherit; font-size: 15px; line-height: 21px; padding: 4px 6px; min-height: 30px; max-height: 140px; }
 .cmtr-input::placeholder { color: var(--c-text-3); }
 .cmtr-compose-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; }
-.cmtr-chip { border: 0; height: 28px; padding: 0 11px; border-radius: 999px; background: var(--c-fill); color: var(--c-text-2); font-size: 12.5px; font-weight: 600; cursor: pointer; font-variant-numeric: tabular-nums; }
-.cmtr-chip[aria-pressed="true"] { background: rgba(255, 255, 255, 0.2); color: var(--c-text); }
+.cmtr-chip { border: 0; height: 28px; padding: 0 11px; border-radius: 999px; background: var(--c-fill); color: var(--c-text); font-size: 12.5px; font-weight: 600; cursor: pointer; font-variant-numeric: tabular-nums; }
+/* same look on or off; when on, a small dot says the comment will be pinned */
+.cmtr-chip { display: inline-flex; align-items: center; gap: 6px; }
+.cmtr-chip[aria-pressed="true"]::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--c-accent); flex: none; }
 .cmtr-btn { border: 0; height: 30px; padding: 0 14px; border-radius: 999px; background: #f5f5f7; color: #0b0b0d !important; font-size: 13px; font-weight: 700; cursor: pointer; }
 .cmtr-btn.ghost { background: var(--c-fill); color: var(--c-text) !important; font-weight: 600; }
 .cmtr-btn:disabled { opacity: 0.45; cursor: default; }
@@ -194,3 +196,19 @@
   .cmtr-mini { padding: 8px 8px 6px; gap: 4px; }
   .cmtr-mini-item { font-size: 13px; line-height: 18px; padding: 4px 6px; }
 }
+
+/* the live panel steps aside after a long quiet stretch, and fades back when a comment arrives */
+.cmtr-corner { transition: opacity 0.6s var(--c-ease); }
+.cmtr-corner.is-resting { opacity: 0; pointer-events: none; }
+.cmtr-mini-item.is-filler { color: var(--c-text-2); }
+.cmtr-from { display: inline-block; font-size: 11.5px; line-height: 18px; padding: 0 6px; margin-right: 2px; border-radius: 999px; background: rgba(255, 255, 255, 0.06); color: var(--c-text-3); font-weight: 600; font-variant-numeric: tabular-nums; vertical-align: 1px; }
+
+/* sidebar beside the picture (wide screens): the player and its controls make room */
+html.cmtr-squeeze .videoPlayerContainer,
+html.cmtr-squeeze .videoOsdBottom,
+html.cmtr-squeeze .skinHeader.osdHeader,
+html.cmtr-squeeze .upNextContainer { right: 424px !important; }
+html.cmtr-squeeze .videoOsdBottom { left: 0; }
+.videoPlayerContainer, .videoOsdBottom { transition: right 0.28s var(--c-ease); }
+html.cmtr-squeeze .cmtr-side { animation: none; }
+@media (prefers-reduced-motion: reduce) { .videoPlayerContainer, .videoOsdBottom { transition: none; } }

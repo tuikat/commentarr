@@ -61,6 +61,20 @@
     });
   }
 
+  // Numbers from the comment server go into attributes; never trust a server to send numbers.
+  function clean(c) {
+    if (!c || typeof c !== 'object') return null;
+    var num = function (v) { var n = Number(v); return isFinite(n) ? n : 0; };
+    c.id = num(c.id); c.likes = num(c.likes); c.createdAt = num(c.createdAt);
+    c.parentId = c.parentId == null ? null : num(c.parentId);
+    c.posMs = c.posMs == null ? null : num(c.posMs);
+    c.runtimeMs = c.runtimeMs == null ? null : num(c.runtimeMs);
+    c.author = c.author && typeof c.author === 'object' ? c.author : { name: 'Viewer', server: '' };
+    c.fromEpisode = c.fromEpisode == null ? null : String(c.fromEpisode);
+    return c;
+  }
+  function cleanAll(list) { return (Array.isArray(list) ? list : []).map(clean).filter(Boolean); }
+
   // ------------------------------------------------------------ server API --
   function authed() {
     if (S.auth && S.auth.exp - Date.now() > 120000) return Promise.resolve(S.auth);
@@ -130,14 +144,20 @@
     S.menuOpen = false; renderMenu();
   });
 
-  function setMode(m) { S.mode = m; setPref('mode', m); render(); }
+  function setMode(m) { S.mode = m; setPref('mode', m); quiet.since = 0; S.miniKey = null; corner.classList.remove('is-resting'); render(); }
 
   // --------------------------------------------------------- loading data --
   function loadComments() {
     if (!S.media) return Promise.resolve();
     return api('GET', '/comments?sort=' + S.sort + '&ids=' + encodeURIComponent(S.media.ids.join(','))).then(function (r) {
-      S.comments = r.comments || [];
+      S.comments = cleanAll(r.comments);
       S.error = '';
+      S.miniKey = null;
+      // For an episode, also the best comments on the rest of the show: they fill a quiet panel.
+      S.related = [];
+      if (S.media.ids[0].indexOf('tv/') === 0) {
+        api('GET', '/related?limit=20&ids=' + encodeURIComponent(S.media.ids.join(','))).then(function (x) { S.related = cleanAll(x.comments); S.miniKey = null; }, function () { });
+      }
       fab.querySelector('.cmtr-fab-count').textContent = S.comments.length ? (S.comments.length > 99 ? '99+' : S.comments.length) : '';
       render();
     }, function (e) { S.error = e.message; render(); });
@@ -151,10 +171,11 @@
       var es = new EventSource(url);
       S.es = es;
       es.addEventListener('comment', function (ev) {
-        var c; try { c = JSON.parse(ev.data); } catch (e) { return; }
+        var c; try { c = clean(JSON.parse(ev.data)); } catch (e) { return; } if (!c) return;
         if (S.comments.some(function (x) { return x.id === c.id; })) return;
         c.isNew = true;
         S.comments.unshift(c);
+        quiet.since = 0; S.miniKey = null;
         fab.querySelector('.cmtr-fab-count').textContent = S.comments.length;
         render();
       });
@@ -209,11 +230,8 @@
     return out;
   }
 
-  // Pin to the current moment by default mid-video; not in the first 2 min or the credits.
-  function defaultPin() {
-    var rt = S.media && S.media.runtimeMs;
-    return S.posMs > 120000 && (!rt || S.posMs < rt * 0.92);
-  }
+  // Comments are not pinned unless you tap the "At 18:32" chip.
+  function defaultPin() { return false; }
 
   function composerHtml(where) {
     var pin = S.pinNow == null ? defaultPin() : S.pinNow;
@@ -232,7 +250,7 @@
     if (!root.isConnected) return;
     var playing = !!A.getVideo();
     fab.style.display = playing && !(hostBtn && hostBtn.isConnected) ? '' : 'none';
-    if (!playing) { corner.innerHTML = ''; removeSide(); return; }
+    if (!playing) { corner.innerHTML = ''; removeSide(); squeeze(false); return; }
 
     // overlay: a small, always-on panel of the latest moments, with a one-line composer
     if (S.mode === 'overlay') {
@@ -255,6 +273,7 @@
     }
 
     if (S.mode === 'sidebar') renderSide(); else removeSide();
+    squeeze(S.mode === 'sidebar' && window.innerWidth >= 900);
     if (S.menuOpen) renderMenu();
   }
 
@@ -293,19 +312,81 @@
   }
   function removeSide() { if (side) { side.remove(); side = null; } }
 
+  // On a wide screen the sidebar sits beside the picture instead of over it: the player shrinks
+  // to the space on the left (the video keeps its aspect ratio), and springs back when it closes.
+  function squeeze(on) { document.documentElement.classList.toggle('cmtr-squeeze', !!on); }
+  window.addEventListener('resize', function () { if (S.mode === 'sidebar' && side) squeeze(window.innerWidth >= 900); });
+
   // ------------------------------------------------- the live panel --
-  // The four latest moments you've passed, oldest at the top, the newest sliding in at the bottom
-  // as you reach it, like a live chat replay. Before the first pinned moment it shows the top
-  // whole-title comments instead, so the panel is never empty when there is something to read.
-  var MINI_MAX = 4;
+  // Up to four comments, like a live chat replay:
+  //  1. moments pinned in the last few minutes of the video come first, newest at the bottom;
+  //  2. empty slots rotate through the rest: this title's best comments, then the best from the
+  //     show's other episodes (labelled), one slot every ~25 s, no repeats until all were shown;
+  //  3. when there is nothing at all for a long stretch, the panel steps aside entirely and comes
+  //     back by itself the moment a comment arrives.
+  var MINI_MAX = 4, RECENT_MS = 5 * 60000, ROTATE_MS = 25000, QUIET_HIDE_MS = 90000;
+  var rot = { order: [], at: 0, shown: [], lastTick: 0 };
+  var quiet = { since: 0, hidden: false };
+
+  function poolKey(c) { return (c.fromEpisode ? 'r' : 't') + c.id; }
+
+  function fillPool() {
+    var tops = S.comments.filter(function (c) { return !c.parentId; });
+    var recentIds = {};
+    var general = tops.filter(function (c) { return c.posMs == null; })
+      .sort(function (a, b) { return b.likes - a.likes || b.createdAt - a.createdAt; });
+    var olderMoments = tops.filter(function (c) { return c.posMs != null && !differentCut(c) && c.posMs < S.posMs - RECENT_MS; })
+      .sort(function (a, b) { return b.likes - a.likes; });
+    return general.concat(olderMoments, S.related || []).filter(function (c) { return !recentIds[c.id]; });
+  }
+
   function miniPick() {
     var tops = S.comments.filter(function (c) { return !c.parentId; });
-    var moments = tops.filter(function (c) { return c.posMs != null && !differentCut(c) && c.posMs <= S.posMs + 500; })
-      .sort(function (a, b) { return a.posMs - b.posMs || a.createdAt - b.createdAt; });
-    if (moments.length) return { label: 'At this point', items: moments.slice(-MINI_MAX) };
-    var general = tops.filter(function (c) { return c.posMs == null; })
-      .sort(function (a, b) { return b.likes - a.likes || b.createdAt - a.createdAt; }).slice(0, MINI_MAX);
-    return { label: general.length ? 'Top comments' : '', items: general };
+    var recent = tops.filter(function (c) {
+      return c.posMs != null && !differentCut(c) && c.posMs <= S.posMs + 500 && c.posMs >= S.posMs - RECENT_MS;
+    }).sort(function (a, b) { return a.posMs - b.posMs || a.createdAt - b.createdAt; }).slice(-MINI_MAX);
+    var free = MINI_MAX - recent.length;
+    var pool = fillPool();
+    var fill = [];
+    if (free > 0 && pool.length) {
+      var keys = pool.map(poolKey);
+      // keep the rotation order stable; new pool items join the end
+      rot.order = rot.order.filter(function (k) { return keys.indexOf(k) >= 0; });
+      keys.forEach(function (k) { if (rot.order.indexOf(k) < 0) rot.order.push(k); });
+      var now = Date.now();
+      if (!rot.shown.length || now - rot.lastTick > ROTATE_MS) {
+        rot.lastTick = now;
+        if (!rot.shown.length) {
+          rot.shown = rot.order.slice(0, free);
+          rot.at = rot.shown.length;
+        } else if (rot.order.length > rot.shown.length) {
+          // swap out the oldest shown filler for the next one in line
+          rot.shown.shift();
+          var guard = 0;
+          while (guard++ < rot.order.length) {
+            var next = rot.order[rot.at % rot.order.length]; rot.at++;
+            if (rot.shown.indexOf(next) < 0) { rot.shown.push(next); break; }
+          }
+        }
+      }
+      rot.shown = rot.shown.filter(function (k) { return keys.indexOf(k) >= 0; }).slice(-free);
+      while (rot.shown.length < Math.min(free, rot.order.length)) {
+        var k2 = rot.order[rot.at % rot.order.length]; rot.at++;
+        if (rot.shown.indexOf(k2) < 0) rot.shown.push(k2); else if (rot.at > rot.order.length * 2) break;
+      }
+      var byKey = {}; pool.forEach(function (c) { byKey[poolKey(c)] = c; });
+      fill = rot.shown.map(function (k) { return byKey[k]; }).filter(Boolean);
+    }
+    var label = recent.length ? 'At this point' : (fill.some(function (c) { return !c.fromEpisode; }) ? 'On this ' + (isMovie() ? 'film' : 'episode') : (fill.length ? 'From this show' : ''));
+    return { label: label, items: fill.concat(recent) };
+  }
+
+  function miniItem(c, isNew) {
+    var tag = c.fromEpisode ? '<span class="cmtr-from">' + esc(c.fromEpisode) + '</span> '
+      : (c.posMs != null ? '<button type="button" class="cmtr-time" data-seek="' + c.posMs + '" aria-label="Jump to ' + clock(c.posMs) + '">' + clock(c.posMs) + '</button> ' : '');
+    return '<div class="cmtr-mini-item' + (isNew ? ' is-new' : '') + (c.posMs == null || c.fromEpisode ? ' is-filler' : '') + '" data-id="' + poolKey(c) + '">' + tag +
+      '<b>' + esc(c.author.name) + '</b> ' + linkify(c.body) +
+      (c.likes ? ' <span class="cmtr-mini-likes">' + c.likes + ' ♥</span>' : '') + '</div>';
   }
 
   function renderMini() {
@@ -313,7 +394,15 @@
     var n = S.comments.length;
     var pick = miniPick();
     box.querySelector('.cmtr-mini-label').textContent = 'Comments' + (n ? ' · ' + n : '') + (pick.label ? ' · ' + pick.label : '');
-    var key = pick.items.map(function (c) { return c.id + ':' + c.likes; }).join(',') + '|' + (S.error || '');
+
+    // Nothing to show for a long while: step aside for uninterrupted viewing.
+    var typing = !!corner.querySelector('textarea:focus') || !!(corner.querySelector('textarea') || {}).value;
+    if (pick.items.length || S.error || typing) { quiet.since = 0; }
+    else if (!quiet.since) { quiet.since = Date.now(); }
+    var hide = !!quiet.since && Date.now() - quiet.since > QUIET_HIDE_MS;
+    if (hide !== quiet.hidden) { quiet.hidden = hide; corner.classList.toggle('is-resting', hide); }
+
+    var key = pick.items.map(function (c) { return poolKey(c) + ':' + c.likes; }).join(',') + '|' + (S.error || '');
     if (key === S.miniKey) return;
     var before = {};
     box.querySelectorAll('.cmtr-mini-item').forEach(function (el) { before[el.getAttribute('data-id')] = true; });
@@ -324,12 +413,7 @@
       list.innerHTML = '<p class="cmtr-mini-empty">' + (n ? 'Comments show up here as you reach their moment.' : 'No comments yet. Say something about this moment.') + '</p>';
       return;
     }
-    list.innerHTML = pick.items.map(function (c) {
-      return '<div class="cmtr-mini-item' + (before[c.id] ? '' : ' is-new') + '" data-id="' + c.id + '">' +
-        (c.posMs != null ? '<button type="button" class="cmtr-time" data-seek="' + c.posMs + '" aria-label="Jump to ' + clock(c.posMs) + '">' + clock(c.posMs) + '</button> ' : '') +
-        '<b>' + esc(c.author.name) + '</b> ' + linkify(c.body) +
-        (c.likes ? ' <span class="cmtr-mini-likes">' + c.likes + ' ♥</span>' : '') + '</div>';
-    }).join('');
+    list.innerHTML = pick.items.map(function (c) { return miniItem(c, !before[poolKey(c)]); }).join('');
   }
 
   // ------------------------------------------------------------ actions --
@@ -353,6 +437,7 @@
     e.preventDefault();
     var ta = form.querySelector('textarea'), btn = form.querySelector('[type=submit]'), err = form.querySelector('.cmtr-err');
     var body = ta.value.trim(); if (!body) return;
+    if (!S.media || !S.media.ids.length) { form.querySelector('.cmtr-err').textContent = 'Still working out which title this is. Try again in a moment.'; return; }
     var chip = form.querySelector('[data-pin]');
     var pinned = !S.replyTo && chip && chip.getAttribute('aria-pressed') === 'true';
     btn.disabled = true; err.textContent = '';
@@ -360,10 +445,11 @@
       ids: S.media.ids, title: S.media.title + (S.media.subtitle ? ' ' + S.media.subtitle : ''),
       body: body, posMs: pinned ? Math.round(S.posMs) : null, runtimeMs: S.media.runtimeMs || null, parentId: S.replyTo,
     }).then(function (c) {
+      c = clean(c);
       ta.value = ''; S.replyTo = null; S.pinNow = null;
       if (!S.comments.some(function (x) { return x.id === c.id; })) { c.isNew = true; S.comments.unshift(c); }
       // A comment pinned to now belongs in the live panel straight away.
-      S.miniKey = null;
+      S.miniKey = null; quiet.since = 0;
       render();
     }, function (x) { err.textContent = x.message; }).then(function () { btn.disabled = false; });
   });
@@ -396,10 +482,11 @@
     pop = h('div', 'cmtr-pop');
     pop.setAttribute('role', 'menu');
     var items = [];
-    if (c.canDelete) items.push(['delete', c.mine ? 'Delete' : 'Delete (your server\'s user)']);
+    // Destructive last, so a quick tap never lands on it.
+    if (c.posMs != null) items.push(['seek', 'Jump to ' + clock(c.posMs)]);
     if (!c.mine) items.push(['report', 'Report…']);
     if (c.canHide && !c.mine) items.push(['hide', 'Hide on my server']);
-    if (c.posMs != null) items.push(['seek', 'Jump to ' + clock(c.posMs)]);
+    if (c.canDelete) items.push(['delete', c.mine ? 'Delete comment' : 'Delete (your server\'s user)']);
     pop.innerHTML = items.map(function (i) { return '<button type="button" role="menuitem" data-act="' + i[0] + '">' + i[1] + '</button>'; }).join('');
     root.appendChild(pop);
     var r = anchor.getBoundingClientRect();
@@ -468,13 +555,20 @@
       return;
     }
     if (!root.isConnected) document.body.appendChild(root);
+    // A different source on the <video> is a different playback: drop the old title at once,
+    // so nothing (the list, the composer) can act on what was playing before.
+    var src = v.currentSrc || v.src || '';
+    if (src && S.src && src !== S.src && lastKey) {
+      lastKey = null; S.media = null; S.comments = []; S.miniKey = null; closeStream(); render();
+    }
+    S.src = src;
     S.posMs = (v.currentTime || 0) * 1000;
     placeFab();
     A.getMedia().then(function (m) {
       if (!m) return;
       if (m.key !== lastKey) {
         lastKey = m.key;
-        S.media = m; S.comments = []; S.miniKey = null; S.revealed = {}; S.replyTo = null;
+        S.media = m; S.comments = []; S.miniKey = null; S.related = []; rot = { order: [], at: 0, shown: [], lastTick: 0 }; quiet = { since: 0, hidden: false }; corner.classList.remove('is-resting'); S.revealed = {}; S.replyTo = null;
         fab.querySelector('.cmtr-fab-count').textContent = '';
         api('GET', '/me').then(function (me) { S.me = me; render(); }, function (e) { S.error = e.message; render(); });
         if (m.ids.length) { loadComments(); openStream(); } else render();

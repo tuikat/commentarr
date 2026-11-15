@@ -23,11 +23,11 @@ That's it. It connects to the shared comment server by itself. No account, no si
 
 Tap the comments button in the player controls for three choices:
 
-- **Overlay**: a small, always-on panel in the corner with the four latest moments you've passed (three on a phone). New ones slide in as you reach them, like a live chat replay, and there's a one-line box to add your own. This is the "watch along with everyone" mode.
-- **Sidebar**: every comment beside the video: sort by **Top**, **New**, or **By time** (with a *Now* line that follows playback), reply, like, report.
+- **Overlay**: a small panel in the corner with up to four comments (three on a phone), like a live chat replay. Comments pinned to the last few minutes of what you're watching come first and slide in as you reach them. Quiet stretches are filled by the title's best comments, and for an episode the best from the rest of the show (labelled, e.g. `S23E02`), rotating every half minute. If there's nothing to show for a while, the panel steps aside entirely and comes back when a comment arrives. A one-line box lets you add your own.
+- **Sidebar**: every comment beside the video: sort by **Top**, **New**, or **By time** (with a *Now* line that follows playback), reply, like, report. On a wide screen the video shrinks to make room instead of being covered.
 - **Off**: no comments while you watch.
 
-**Pinned comments.** While you're mid-video, a new comment is pinned to the current moment (`At 18:32`) so it pops up for everyone at that exact point. Near the start and during the credits it isn't pinned by default, since those are usually about the whole thing. Tap the chip to change it either way. Typing a time like `1:02:10` in any comment turns it into a jump link.
+**Pinned comments.** Tap the `At 18:32` chip before posting to pin a comment to that moment, so it pops up for everyone at that exact point (a small dot shows it's on). Comments aren't pinned unless you choose to. Typing a time like `1:02:10` in any comment turns it into a jump link.
 
 **Spoilers.** Off by default. Turn on *Spoilers hidden* in the sidebar to blur comments pinned to moments you haven't reached yet.
 
@@ -44,7 +44,7 @@ Tap the comments button in the player controls for three choices:
 | People | Your users who have commented; **ban** someone from commenting |
 | Banned words | Your users can't post them, and other servers' comments containing them are hidden from your users |
 
-Jellyfin administrators also get **Hide on my server** in each comment's ••• menu inside the player. The public server has its own moderators, word list and automatic hiding of comments reported by people on several different servers.
+Jellyfin administrators also get **Hide on my server** in each comment's ••• menu inside the player. The public server has its own moderators and word list, rate limits per person, per server and per address, and automatically hides a comment for review once people on several established servers report it.
 
 ## Privacy
 
@@ -76,6 +76,10 @@ Produces `dist/commentarr_<version>.zip` (the Jellyfin plugin) and `dist/comment
 
 - `client/`: the player UI: `core.js` + `commentarr.css`, with one adapter per media server
 - `src/Jellyfin.Plugin.Commentarr/`: the Jellyfin plugin (registration, user tokens, settings and moderation page, script injection)
+
+`./build.sh install` also copies the plugin into a local Jellyfin: set `JELLYFIN_PLUGINS` to its `data/plugins` folder (and `JELLYFIN_CONTAINER` if the container isn't called `jellyfin`).
+
+Something wrong in the player? Open the browser console and run `__commentarrState()`; include the output in your issue.
 
 ## Contributing
 

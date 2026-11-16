@@ -133,10 +133,12 @@
   }
 
   function renderMenu() {
-    menu.hidden = !S.menuOpen;
     trigger().setAttribute('aria-expanded', S.menuOpen);
-    if (!S.menuOpen) return;
+    if (!S.menuOpen) { menu.hidden = true; return; }
+    // Put it in place BEFORE it shows: Safari blurs the area where a blurred panel first appeared,
+    // so moving it afterwards left the blur behind as an offset rectangle.
     placeMenu();
+    menu.hidden = false;
     var n = S.comments.length;
     var opt = function (mode, label, sub) { return '<button type="button" role="menuitemradio" aria-checked="' + (S.mode === mode) + '" data-mode="' + mode + '"><span>' + label + '<small>' + sub + '</small></span></button>'; };
     menu.innerHTML = '<div class="cmtr-menu-head">' + (S.media ? (n === 1 ? '1 comment' : n + ' comments') + ' on this ' + (S.media.ids[0].indexOf('movie/') === 0 ? 'film' : 'episode') : 'Comments') + '</div>' +

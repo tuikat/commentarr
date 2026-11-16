@@ -337,3 +337,16 @@ html.cmtr-squeeze-bottom .videoOsdBottom, html.cmtr-squeeze-bottom .upNextContai
 }
 .cmtr-companion .cmtr-foot { display: none; }
 .cmtr-companion .cmtr-side .cmtr-rename-chip { display: inline-flex; }
+
+/* iPhone and iPad (Safari and the Jellyfin app's web view): no blur behind panels. WebKit there can draw
+   the blur in the wrong place (an offset rectangle behind the menu), so panels get a solid, slightly
+   see-through background instead. -webkit-touch-callout only exists in iOS WebKit. */
+@supports (-webkit-touch-callout: none) {
+  .cmtr-menu, .cmtr-pop, .cmtr-mini, .cmtr-bubble, .cmtr-pillwrap, .cmtr-side, .cmtr-fab {
+    -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+  }
+  .cmtr-menu, .cmtr-pop { background: rgba(30, 30, 34, 0.97); }
+  .cmtr-mini, .cmtr-bubble { background: rgba(20, 20, 24, 0.86); }
+  .cmtr-pillwrap, .cmtr-fab { background: rgba(30, 30, 34, 0.95); }
+  .cmtr-side { background: #141417; }
+}

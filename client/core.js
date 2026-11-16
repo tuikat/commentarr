@@ -25,7 +25,8 @@
 
   var S = {
     auth: null, me: null, media: null, comments: [], loadedKey: null,
-    mode: pref('mode', 'overlay'),      // overlay | sidebar | off
+    mode: pref('mode', Math.min(window.innerWidth, window.innerHeight) < 600 ? 'bubble' : 'overlay'),   // bubble | overlay | sidebar | off
+    returnMode: null, expandedAt: 0,   // a tapped bubble expands into the overlay panel (or on to the sidebar); closing goes back to bubbles
     sort: pref('sort', 'top'),           // top | new
     spoilers: pref('spoilers', false),   // also blur comments pinned ahead of you (and from later episodes)
     menuOpen: false, replyTo: null, pinNow: null, spoilNow: false, revealed: {},
@@ -136,6 +137,7 @@
     var n = S.comments.length;
     var opt = function (mode, label, sub) { return '<button type="button" role="menuitemradio" aria-checked="' + (S.mode === mode) + '" data-mode="' + mode + '"><span>' + label + '<small>' + sub + '</small></span></button>'; };
     menu.innerHTML = '<div class="cmtr-menu-head">' + (S.media ? (n === 1 ? '1 comment' : n + ' comments') + ' on this ' + (S.media.ids[0].indexOf('movie/') === 0 ? 'film' : 'episode') : 'Comments') + '</div>' +
+      opt('bubble', 'Bubble', 'One comment at a time, as you reach it') +
       opt('overlay', 'Overlay', 'A small live panel in the corner') +
       opt('sidebar', 'Sidebar', 'Every comment, beside the video') +
       opt('off', 'Off', 'Hide comments while watching');
@@ -146,7 +148,8 @@
     S.menuOpen = false; renderMenu();
   });
 
-  function setMode(m) { S.mode = m; setPref('mode', m); quiet.since = 0; S.miniKey = null; corner.classList.remove('is-resting'); render(); }
+  function collapse() { var back = S.returnMode; S.returnMode = null; S.mode = back; bub.last = null; render(); }
+  function setMode(m) { S.returnMode = null; S.mode = m; setPref('mode', m); bub.cur = null; bub.queue = []; quiet.since = 0; S.miniKey = null; corner.classList.remove('is-resting'); render(); }
 
   // --------------------------------------------------------- loading data --
   function loadComments() {
@@ -177,6 +180,7 @@
         if (S.comments.some(function (x) { return x.id === c.id; })) return;
         c.isNew = true;
         S.comments.unshift(c);
+        if (S.mode === 'bubble' && c.posMs != null && Math.abs(c.posMs - S.posMs) < 15000) enqueue(c);
         quiet.since = 0; S.miniKey = null;
         fab.querySelector('.cmtr-fab-count').textContent = S.comments.length;
         render();
@@ -293,7 +297,7 @@
           '<section class="cmtr-mini" aria-label="Comments">' +
             '<header class="cmtr-mini-head"><span class="cmtr-mini-label"></span>' +
               '<button type="button" class="cmtr-icon" data-mode-to="sidebar" aria-label="Show all comments" title="All comments"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M9.5 2.5h4v4M13.5 2.5 9 7M6.5 13.5h-4v-4M2.5 13.5 7 9"/></svg></button>' +
-              '<button type="button" class="cmtr-icon" data-mode-to="off" aria-label="Hide comments" title="Hide">' + ICON.x + '</button></header>' +
+              '<button type="button" class="cmtr-icon" data-mode-to="off" aria-label="' + (S.returnMode ? 'Back to bubbles' : 'Hide comments') + '" title="' + (S.returnMode ? 'Back to bubbles' : 'Hide') + '">' + ICON.x + '</button></header>' +
             '<div class="cmtr-mini-list" aria-live="polite"></div>' +
             '<div class="cmtr-mini-compose"></div>' +
           '</section>';
@@ -301,6 +305,10 @@
         S.miniKey = null;
       }
       renderMini();
+    } else if (mode === 'bubble') {
+      removeSide();
+      if (!corner.querySelector('.cmtr-bubble-slot')) { corner.innerHTML = '<div class="cmtr-bubble-slot" role="status" aria-live="polite"></div>'; bub.shownId = null; }
+      drawBubble();
     } else {
       corner.innerHTML = '';
     }
@@ -383,6 +391,48 @@
   var quiet = { since: 0, hidden: false };
 
   function poolKey(c) { return (c.fromEpisode ? 'r' : 't') + c.id; }
+
+  // ------------------------------------------------------- bubble mode --
+  // One comment at a time, popping up as playback reaches its moment, then fading. Only moments you
+  // actually play through: a seek doesn't replay everything you skipped. Several at once wait their turn.
+  var bub = { last: null, queue: [], cur: null, until: 0, nextAt: 0, seen: {}, shownId: null };
+  function bubbleDur(c) { return Math.max(5000, Math.min(9000, 3500 + 55 * c.body.length)); }
+  function enqueue(c) {
+    if (bub.seen[c.id] || c.parentId || differentCut(c)) return;
+    bub.seen[c.id] = true; bub.queue.push(c);
+    if (bub.queue.length > 4) bub.queue = bub.queue.slice(-4);   // never fall far behind the film
+  }
+  function bubbleTick() {
+    var pos = S.posMs;
+    if (bub.last != null) {
+      var d = pos - bub.last;
+      if (d > 0 && d < 2500) {
+        S.comments.filter(function (c) { return !c.parentId && c.posMs != null && c.posMs > bub.last && c.posMs <= pos; })
+          .sort(function (a, b) { return a.posMs - b.posMs; }).forEach(enqueue);
+      }
+    }
+    bub.last = pos;
+    var now = Date.now();
+    if (bub.cur && now > bub.until) { bub.cur = null; bub.nextAt = now + 700; }
+    if (!bub.cur && bub.queue.length && now >= bub.nextAt) { bub.cur = bub.queue.shift(); bub.until = now + bubbleDur(bub.cur); }
+    drawBubble();
+  }
+  function drawBubble() {
+    var slot = corner.querySelector('.cmtr-bubble-slot'); if (!slot) return;
+    var c = bub.cur, id = c ? poolKey(c) + (concealed(c) ? 's' : '') : null;
+    if (id === bub.shownId) return;
+    bub.shownId = id;
+    if (!c) { var old = slot.firstChild; if (old) { old.classList.add('is-out'); setTimeout(function () { if (old.parentNode && old.classList.contains('is-out')) old.remove(); }, 350); } return; }
+    var why = concealed(c);
+    slot.innerHTML = '<div class="cmtr-bubble">' +
+      '<button type="button" class="cmtr-bubble-main" data-bubble-open aria-label="Open all comments">' +
+        '<span class="cmtr-bubble-who"><b>' + esc(c.author.name) + '</b>' + (c.posMs != null ? ' · ' + clock(c.posMs) : '') + (c.likes ? ' · ' + c.likes + ' ♥' : '') + '</span>' +
+        '<span class="cmtr-bubble-text">' + (why ? '' : linkify(c.body)) + '</span>' +
+      '</button>' +
+      (why ? revealBtn(c, why) : '') +
+      '<button type="button" class="cmtr-icon cmtr-bubble-x" data-bubble-x aria-label="Dismiss">' + ICON.x + '</button>' +
+    '</div>';
+  }
 
   function fillPool() {
     var tops = S.comments.filter(function (c) { return !c.parentId; });
@@ -474,14 +524,20 @@
   // ------------------------------------------------------------ actions --
   root.addEventListener('click', function (e) {
     var t;
+    if (S.returnMode) S.expandedAt = Date.now();
     if ((t = e.target.closest('[data-seek]'))) { e.preventDefault(); A.seek(Number(t.getAttribute('data-seek'))); return; }
     if ((t = e.target.closest('[data-remote]'))) {
       var act = t.getAttribute('data-remote');
       if (act === 'next') A.nextDevice(); else A.remote(act).catch(function (x) { alert(x.message); });
       render(); return;
     }
+    if (e.target.closest('[data-bubble-x]')) { bub.cur = null; bub.until = 0; bub.nextAt = Date.now() + 700; drawBubble(); return; }
+    if (e.target.closest('[data-bubble-open]') && !e.target.closest('[data-seek], a')) { S.returnMode = 'bubble'; S.expandedAt = Date.now(); bub.cur = null; bub.queue = []; S.mode = 'overlay'; S.miniKey = null; quiet.since = 0; corner.classList.remove('is-resting'); render(); return; }
     if ((t = e.target.closest('[data-mode-to]'))) {
       if (A.companion && A.companion() && t.getAttribute('data-mode-to') === 'off') { A.closeCompanion(); render(); return; }
+      if (S.returnMode && t.getAttribute('data-mode-to') === 'off') { collapse(); return; }
+      // from the expanded panel, "all comments" keeps the way back to bubbles (and doesn't change the saved mode)
+      if (S.returnMode && t.getAttribute('data-mode-to') === 'sidebar') { S.mode = 'sidebar'; S.expandedAt = Date.now(); render(); return; }
       setMode(t.getAttribute('data-mode-to')); return;
     }
     if ((t = e.target.closest('[data-sort]'))) { S.sort = t.getAttribute('data-sort'); setPref('sort', S.sort); if (S.sort === 'time') render(); else loadComments(); return; }
@@ -514,6 +570,7 @@
       c = clean(c);
       ta.value = ''; form.classList.remove('has-text'); S.drafts = {}; S.replyTo = null; S.pinNow = null; S.spoilNow = false;
       if (!S.comments.some(function (x) { return x.id === c.id; })) { c.isNew = true; S.comments.unshift(c); }
+      if (S.mode === 'bubble' && c.posMs != null) enqueue(c);
       // A comment pinned to now belongs in the live panel straight away.
       S.miniKey = null; quiet.since = 0;
       render();
@@ -654,13 +711,16 @@
       if (!m) return;
       if (m.key !== lastKey) {
         lastKey = m.key;
-        S.media = m; S.comments = []; S.miniKey = null; S.related = []; rot = { order: [], at: 0, shown: [], lastTick: 0 }; quiet = { since: 0, hidden: false }; corner.classList.remove('is-resting'); S.revealed = {}; S.replyTo = null;
+        S.media = m; S.comments = []; S.miniKey = null; S.related = []; rot = { order: [], at: 0, shown: [], lastTick: 0 }; quiet = { since: 0, hidden: false }; corner.classList.remove('is-resting'); S.revealed = {}; S.replyTo = null; bub = { last: null, queue: [], cur: null, until: 0, nextAt: 0, seen: {}, shownId: null };
         fab.querySelector('.cmtr-fab-count').textContent = '';
         api('GET', '/me').then(function (me) { S.me = me; render(); }, function (e) { S.error = e.message; render(); });
         if (m.ids.length) { loadComments(); openStream(); } else render();
       }
     }, function () { });
     if (S.mode === 'overlay') renderMini();
+    else if (S.mode === 'bubble') bubbleTick();
+    if (S.returnMode && S.mode === 'overlay' && Date.now() - S.expandedAt > 30000
+        && !root.querySelector('form.cmtr-compose textarea:focus') && !Object.keys(S.drafts).some(function (k) { return S.drafts[k]; })) collapse();
     placeCorner();
     // keep the "At 18:32" chip and the Now marker moving, without re-rendering every frame
     if (Date.now() - lastRender > 1000) { lastRender = Date.now(); if (side) remoteBar(); if ((S.mode === 'sidebar' || (A.companion && A.companion())) && side && !side.contains(document.activeElement)) renderSide(); else if (side) { var chip = side.querySelector('[data-pin]'); if (chip) chip.textContent = 'At ' + clock(S.posMs); } var cc = corner.querySelector('[data-pin]'); if (cc) cc.textContent = 'At ' + clock(S.posMs); }

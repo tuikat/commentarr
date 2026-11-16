@@ -29,8 +29,9 @@ That's it. It connects to the shared comment server by itself. No account, no si
 
 ## Using it
 
-Tap the comments button in the player controls for three choices:
+Tap the comments button in the player controls for four choices:
 
+- **Bubble** (the default on phones): one comment at a time in a small speech bubble, popping up as you reach its moment and fading a few seconds later. Seeking ahead doesn't replay what you skipped. Tap a bubble to open the overlay panel and write your own; closing it goes back to bubbles.
 - **Overlay**: a small panel in the corner with up to four comments (three on a phone), like a live chat replay. Comments pinned to the last few minutes of what you're watching come first and slide in as you reach them. Quiet stretches are filled by the title's best comments, and for an episode the best from the rest of the show (labelled, e.g. `S23E02`), rotating every half minute. If there's nothing to show for a while, the panel steps aside entirely and comes back when a comment arrives. A one-line box lets you add your own.
 - **Sidebar**: every comment beside the video: sort by **Top**, **New**, or **By time** (with a *Now* line that follows playback), reply, like, report. On a wide screen the video shrinks to make room instead of being covered.
 - **Off**: no comments while you watch.

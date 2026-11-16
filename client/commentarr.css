@@ -142,12 +142,18 @@
 .cmtr-reveal:hover { color: var(--c-text); }
 .cmtr-mini-item .cmtr-reveal { margin-top: 0; font-size: 11.5px; line-height: 18px; padding: 0 8px; }
 .cmtr-chips { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.cmtr-rename-chip { display: none; }
 
 .cmtr-now { display: flex; align-items: center; gap: 8px; margin: 6px 10px; color: var(--c-accent); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .cmtr-now::before, .cmtr-now::after { content: ""; flex: 1; height: 1px; background: currentColor; opacity: 0.6; }
 .cmtr-empty { margin: 12px 10px; padding: 18px; border-radius: 16px; background: rgba(255, 255, 255, 0.04); color: var(--c-text-2); }
 
 .cmtr-compose { margin: 0 12px 12px; padding: 10px; border-radius: 18px; background: rgba(255, 255, 255, 0.07); }
+/* the sidebar's comment box sits under the list, one line until you start writing */
+.cmtr-side .cmtr-slot-compose { flex: none; padding-top: 8px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06); }
+.cmtr-side .cmtr-compose { padding: 6px 8px; }
+.cmtr-side .cmtr-compose-bar { display: none; }
+.cmtr-side .cmtr-compose:focus-within .cmtr-compose-bar, .cmtr-side .cmtr-compose.has-text .cmtr-compose-bar, .cmtr-side .cmtr-compose:has(.cmtr-replying) .cmtr-compose-bar { display: flex; }
 .cmtr-input { width: 100%; resize: none; border: 0; background: transparent; color: var(--c-text); font: inherit; font-size: 15px; line-height: 21px; padding: 4px 6px; min-height: 30px; max-height: 140px; }
 .cmtr-input::placeholder { color: var(--c-text-3); }
 .cmtr-compose-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; }
@@ -249,6 +255,29 @@ html.cmtr-squeeze-bottom .videoOsdBottom, html.cmtr-squeeze-bottom .upNextContai
   .cmtr-mini-item:not(:nth-last-child(-n+2)) { display: none; }
   .cmtr-mini-compose .cmtr-compose { padding: 4px 4px 4px 6px; border-radius: 14px; }
   .cmtr-mini-compose .cmtr-input { font-size: 12.5px; min-height: 22px; padding: 2px 4px; }
+
+  /* the sidebar on a phone held sideways: compact header, more room for comments, a line only on its left
+     edge (the screen's rounded corners would cut the other edges off) */
+  .cmtr-side { box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.14) !important; }
+  .cmtr-side-head { padding: 8px 10px 6px 14px; grid-template-columns: auto 1fr auto; align-items: center; gap: 0 8px; }
+  .cmtr-side-head h2 { font-size: 15px; line-height: 20px; }
+  .cmtr-side-head p { grid-column: 2; grid-row: 1; font-size: 12px; }
+  .cmtr-x { grid-row: 1; grid-column: 3; width: 28px; height: 28px; }
+  .cmtr-tools { padding: 0 10px 6px 14px; gap: 6px; flex-wrap: nowrap; }
+  .cmtr-seg { padding: 2px; }
+  .cmtr-seg button { height: 24px; padding: 0 9px; font-size: 12px; }
+  .cmtr-tools .cmtr-chip { height: 26px; font-size: 12px; padding: 0 9px; }
+  .cmtr-list { padding: 0 6px 6px 8px; }
+  .cmtr-item { padding: 6px 6px 6px 8px; }
+  .cmtr-who { font-size: 12.5px; }
+  .cmtr-body { font-size: 13.5px; line-height: 19px; }
+  .cmtr-acts { margin-top: 2px; }
+  .cmtr-acts button { padding: 2px 7px; font-size: 11.5px; }
+  .cmtr-side .cmtr-slot-compose { padding-top: 6px; }
+  .cmtr-side .cmtr-compose { margin: 0 8px 8px 10px; padding: 3px 6px; border-radius: 14px; }
+  .cmtr-side .cmtr-input { font-size: 13.5px; min-height: 26px; padding: 3px 4px; }
+  .cmtr-foot { display: none; }
+  .cmtr-side .cmtr-rename-chip { display: inline-flex; }
 }
 
 /* ------------------------------------------------- second screen (companion) -- */
@@ -298,3 +327,13 @@ html.cmtr-squeeze-bottom .videoOsdBottom, html.cmtr-squeeze-bottom .upNextContai
 @media (max-width: 640px) { .cmtr-bubble-text { font-size: 14px; } }
 @media (max-height: 560px) and (orientation: landscape) { .cmtr-bubble-text { font-size: 13px; line-height: 18px; -webkit-line-clamp: 2; } .cmtr-bubble { padding: 7px 5px 8px 11px; } }
 @media (prefers-reduced-motion: reduce) { .cmtr-bubble { animation: none; transition: none; } }
+/* typing in a comment box: a soft highlight on the box, not a hard outline on the text field */
+.cmtr .cmtr-compose textarea:focus-visible { box-shadow: none; }
+.cmtr .cmtr-compose:focus-within { background: rgba(255, 255, 255, 0.1); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16); }
+/* phones and the second screen: no footer (its name button lives in the comment box instead) */
+@media (max-width: 899px), (max-height: 560px) {
+  .cmtr-foot { display: none; }
+  .cmtr-side .cmtr-rename-chip { display: inline-flex; }
+}
+.cmtr-companion .cmtr-foot { display: none; }
+.cmtr-companion .cmtr-side .cmtr-rename-chip { display: inline-flex; }

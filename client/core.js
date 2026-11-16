@@ -26,6 +26,7 @@
   var S = {
     auth: null, me: null, media: null, comments: [], loadedKey: null,
     mode: pref('mode', Math.min(window.innerWidth, window.innerHeight) < 600 ? 'bubble' : 'overlay'),   // bubble | overlay | sidebar | off
+    quietMode: pref('quietMode', null), // the last of Bubble / Off you chose: closing a panel goes back to it
     returnMode: null, expandedAt: 0,   // a tapped bubble expands into the overlay panel (or on to the sidebar); closing goes back to bubbles
     sort: pref('sort', 'top'),           // top | new
     spoilers: pref('spoilers', false),   // also blur comments pinned ahead of you (and from later episodes)
@@ -34,6 +35,8 @@
     miniKey: null,
     es: null, posMs: 0, error: '',
   };
+
+  if (!S.quietMode && S.mode === 'bubble') S.quietMode = 'bubble';
 
   var ICON = {
     bubble: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M20 12.2c0 4-3.6 7.1-8 7.1-1.1 0-2.2-.2-3.1-.5L4.5 20l1.2-3.4C4.6 15.4 4 13.9 4 12.2 4 8.2 7.6 5 12 5s8 3.2 8 7.2Z"/></svg>',
@@ -149,7 +152,7 @@
   });
 
   function collapse() { var back = S.returnMode; S.returnMode = null; S.mode = back; bub.last = null; render(); }
-  function setMode(m) { S.returnMode = null; S.mode = m; setPref('mode', m); bub.cur = null; bub.queue = []; quiet.since = 0; S.miniKey = null; corner.classList.remove('is-resting'); render(); }
+  function setMode(m) { S.returnMode = null; S.mode = m; setPref('mode', m); if (m === 'bubble' || m === 'off') { S.quietMode = m; setPref('quietMode', m); } bub.cur = null; bub.queue = []; quiet.since = 0; S.miniKey = null; corner.classList.remove('is-resting'); render(); }
 
   // --------------------------------------------------------- loading data --
   function loadComments() {
@@ -274,6 +277,7 @@
         '<span class="cmtr-chips">' +
           (reply ? '' : '<button type="button" class="cmtr-chip" data-pin aria-pressed="' + pin + '" title="Show this comment at this moment for everyone">At ' + clock(S.posMs) + '</button>') +
           '<button type="button" class="cmtr-chip" data-spoil aria-pressed="' + !!S.spoilNow + '" title="Cover this comment until someone chooses to read it">Spoiler</button>' +
+          (where === 'side' ? '<button type="button" class="cmtr-chip cmtr-rename-chip" data-rename title="Change the name others see">Name</button>' : '') +
         '</span>' +
         '<button type="submit" class="cmtr-btn">Post</button>' +
       '</div><div class="cmtr-err" role="alert"></div></form>';
@@ -329,8 +333,8 @@
         '<div class="cmtr-tools"><div class="cmtr-seg" role="group" aria-label="Sort">' +
           '<button type="button" data-sort="top">Top</button><button type="button" data-sort="new">New</button><button type="button" data-sort="time">By time</button></div>' +
           '<button type="button" class="cmtr-chip" data-spoilers>Spoilers</button></div>' +
-        '<div class="cmtr-slot-compose"></div>' +
         '<div class="cmtr-list" aria-live="polite"></div>' +
+        '<div class="cmtr-slot-compose"></div>' +
         '<footer class="cmtr-foot"><span class="cmtr-me"></span><button type="button" data-rename>Change name</button></footer>';
       root.appendChild(side);
     }
@@ -536,6 +540,8 @@
     if ((t = e.target.closest('[data-mode-to]'))) {
       if (A.companion && A.companion() && t.getAttribute('data-mode-to') === 'off') { A.closeCompanion(); render(); return; }
       if (S.returnMode && t.getAttribute('data-mode-to') === 'off') { collapse(); return; }
+      // the close cross on a panel: back to bubbles if that's where you came from, off otherwise
+      if (t.getAttribute('data-mode-to') === 'off' && (S.mode === 'overlay' || S.mode === 'sidebar') && S.quietMode === 'bubble') { setMode('bubble'); return; }
       // from the expanded panel, "all comments" keeps the way back to bubbles (and doesn't change the saved mode)
       if (S.returnMode && t.getAttribute('data-mode-to') === 'sidebar') { S.mode = 'sidebar'; S.expandedAt = Date.now(); render(); return; }
       setMode(t.getAttribute('data-mode-to')); return;

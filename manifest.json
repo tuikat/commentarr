@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/tuikat/commentarr/main/images/icon.png",
     "versions": [
       {
+        "version": "1.0.12.0",
+        "changelog": "Closing the overlay or sidebar goes back to Bubble mode if that is what you were using. On phones the sidebar fits more comments: compact header, one-line comment box at the bottom, no footer, and only a left edge line held sideways.",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/tuikat/commentarr/releases/download/v1.0.12/commentarr_1.0.12.0.zip",
+        "checksum": "40fc2a4e01f246603468b568d3c0ceb1",
+        "timestamp": "2026-11-16T09:10:41Z"
+      },
+      {
         "version": "1.0.11.0",
         "changelog": "New Bubble mode, the default on phones: one comment at a time in a small speech bubble, popping up as you reach its moment. Tap a bubble to open the panel and write your own.",
         "targetAbi": "10.11.0.0",

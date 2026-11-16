@@ -90,7 +90,7 @@
   function localVideo() {
     if (!/\/video\b/.test(location.hash)) return null;
     var v = document.querySelector('video.htmlvideoplayer') || document.querySelector('.videoPlayerContainer video');
-    return v && v.offsetParent !== null ? v : null;
+    return v && v.getClientRects().length > 0 ? v : null;   // rendered (works for fixed-position videos too)
   }
 
   // ------------------------------------------------ second screen (companion) --
@@ -128,10 +128,11 @@
     }, function () { }).then(function () { comp.polling = false; });
   }
 
-  function sync(x) {
-    var a = comp.anchor;
+  function sync(x, st) {
+    st = st || comp;
+    var a = st.anchor;
     if (!a || a.sid !== x.sessionId || a.item !== x.itemId || a.paused !== x.paused) {
-      comp.anchor = { sid: x.sessionId, item: x.itemId, paused: x.paused, pos: x.estMs, t: x.at };
+      st.anchor = { sid: x.sessionId, item: x.itemId, paused: x.paused, pos: x.estMs, t: x.at };
       return;
     }
     var predicted = a.pos + (a.paused ? 0 : x.at - a.t);
@@ -140,7 +141,8 @@
     a.pos = Math.abs(err) > SNAP_MS ? x.estMs : predicted + err * 0.25;
     a.t = x.at;
   }
-  function compPos() { var a = comp.anchor; return a ? Math.max(0, a.pos + (a.paused ? 0 : performance.now() - a.t)) : 0; }
+  function clockPos(st) { var a = st.anchor; return a ? Math.max(0, a.pos + (a.paused ? 0 : performance.now() - a.t)) : 0; }
+  function compPos() { return clockPos(comp); }
   function companionLive() { return comp.open && !!comp.sel && !!comp.anchor && !localVideo(); }
 
   function drawPill() {
@@ -162,23 +164,63 @@
     comp.pill.querySelector('[data-open]').setAttribute('aria-label', 'Comments for ' + comp.pill.querySelector('small').textContent);
   }
 
-  function remote(action, ms) {
-    var x = comp.sel; if (!x) return Promise.reject(new Error('Nothing playing'));
+  function remote(action, ms) { return remoteFor(comp, action, ms); }
+  function remoteFor(st, action, ms) {
+    var x = st.sel; if (!x) return Promise.reject(new Error('Nothing playing'));
     var q = 'Commentarr/Remote/' + encodeURIComponent(x.sessionId) + '?action=' + action + (ms != null ? '&ms=' + Math.round(ms) : '');
     // move our own clock at once; the TV's next report confirms or corrects it
-    var a = comp.anchor;
+    var a = st.anchor;
     if (a) {
       if (action === 'seek') { a.pos = ms; a.t = performance.now(); }
-      else { a.pos = compPos(); a.t = performance.now(); a.paused = action === 'pause'; x.paused = a.paused; }
+      else { a.pos = clockPos(st); a.t = performance.now(); a.paused = action === 'pause'; x.paused = a.paused; }
     }
     return fetch(C().getUrl(q), { method: 'POST', headers: headers() }).then(function (r) {
       if (!r.ok) return r.json().catch(function () { return {}; }).then(function (j) { throw new Error(j.error || j.Error || 'The TV didn\'t respond'); });
-      setTimeout(poll, 1500);
+      setTimeout(st === nat ? pollNative : poll, 1500);
     });
   }
 
+  // ------------------------------- native player on this device (Jellyfin Media Player, Jellyfin Desktop) --
+  // These apps show this same web interface but play video with mpv underneath it, so there is no
+  // <video> here. On the player screen with no video for a couple of seconds, follow this device's own
+  // playback through the plugin's clock instead, exactly like the second screen does. A browser always
+  // has its <video> by then, so it never takes this path.
+  var nat = { sel: null, anchor: null, lastPoll: 0, polling: false, noVideoSince: 0, rect: null };
+  var NATIVE_AFTER = 2000;
+  function onPlayerScreen() { return /\/video\b/.test(location.hash) && !!document.querySelector('.videoOsdBottom'); }
+  function nativeLive() { return !!nat.sel && !!nat.anchor && !!nat.noVideoSince && Date.now() - nat.noVideoSince > NATIVE_AFTER && onPlayerScreen() && !localVideo(); }
+  function pollNative() {
+    nat.polling = true; nat.lastPoll = Date.now();
+    var t0 = performance.now();
+    get('Commentarr/NowPlaying?device=' + encodeURIComponent(C().deviceId())).then(function (r) {
+      var t1 = performance.now(), half = (t1 - t0) / 2;
+      var x = (r.sessions || r.Sessions || []).map(lc)[0];
+      if (!x) { nat.sel = null; nat.anchor = null; return; }
+      x.positionMs = Number(x.positionMs) || 0; x.ageMs = Number(x.ageMs) || 0; x.paused = !!x.paused;
+      x.estMs = x.positionMs + (x.paused ? 0 : x.ageMs + half); x.at = t1;
+      nat.sel = x; sync(x, nat);
+    }, function () { }).then(function () { nat.polling = false; });
+  }
+
+  // mpv draws the picture itself, so shrinking the web player's box doesn't move it. Jellyfin Media
+  // Player (from Plex Media Player) can be told where to draw the video; when it can, keep the video
+  // inside the web player's box, so the sidebar sits beside the picture instead of over it.
+  function nativeApi() { var p = window.api && window.api.player; return p && typeof p.setVideoRectangle === 'function' ? p : null; }
+  function fitNativeVideo(active) {
+    var p = nativeApi(); if (!p) return;
+    var box = document.querySelector('.videoPlayerContainer');
+    var full = { x: 0, y: 0, w: window.innerWidth, h: window.innerHeight };
+    var r = full;
+    if (active && box) { var b = box.getBoundingClientRect(); if (b.width > 50 && b.height > 50) r = { x: Math.round(b.left), y: Math.round(b.top), w: Math.round(b.width), h: Math.round(b.height) }; }
+    var isFull = r.x === 0 && r.y === 0 && r.w === full.w && r.h === full.h;
+    if (!nat.rect && isFull) return;                       // never touched it: leave the app alone
+    var key = r.x + ',' + r.y + ',' + r.w + ',' + r.h;
+    if (nat.rect === key) return;
+    try { p.setVideoRectangle(r.x, r.y, r.w, r.h); nat.rect = isFull ? null : key; } catch (e) { nat.rect = null; }
+  }
+
   // for bug reports: window.__commentarrState() in the browser console
-  window.__commentarrState = function () { return { streamId: streamId, since: Math.round(since), now: Math.round(performance.now()), stale: media.stale, forItem: media.forItem, lastSrc: lastSrc, session: media.sessionId, companion: { open: comp.open, sel: comp.sel, anchor: comp.anchor, posMs: Math.round(compPos()) } }; };
+  window.__commentarrState = function () { return { streamId: streamId, since: Math.round(since), now: Math.round(performance.now()), stale: media.stale, forItem: media.forItem, lastSrc: lastSrc, session: media.sessionId, companion: { open: comp.open, sel: comp.sel, anchor: comp.anchor, posMs: Math.round(compPos()) }, native: { live: nativeLive(), sel: nat.sel, posMs: Math.round(clockPos(nat)), api: !!nativeApi(), rect: nat.rect } }; };
 
   window.CommentarrAdapter = {
     getAuth: function () {
@@ -188,8 +230,9 @@
     },
 
     getMedia: function () {
-      if (companionLive()) {
-        var cid = comp.sel.itemId;
+      var follow = nativeLive() ? nat : companionLive() ? comp : null;
+      if (follow) {
+        var cid = follow.sel.itemId;
         if (media.forItem === cid && media.value) return Promise.resolve(media.value);
         if (media.pending) return media.pending;
         media.pending = resolve(cid).then(function (m) { media.forItem = cid; media.value = m; media.checkedAt = Date.now(); return m; })
@@ -226,7 +269,17 @@
 
     getVideo: function () {
       var v = localVideo();
-      if (v) { if (comp.open) comp.open = false; if (comp.pill) comp.pill.hidden = true; return v; }
+      if (v) { nat.noVideoSince = 0; nat.sel = null; nat.anchor = null; if (comp.open) comp.open = false; if (comp.pill) comp.pill.hidden = true; return v; }
+      if (onPlayerScreen()) {
+        if (!nat.noVideoSince) nat.noVideoSince = Date.now();
+        if (Date.now() - nat.noVideoSince > NATIVE_AFTER && !nat.polling && Date.now() - nat.lastPoll > POLL_OPEN && C() && C().accessToken && C().accessToken()) pollNative();
+        if (nativeLive()) {
+          fitNativeVideo(true);
+          return { currentTime: clockPos(nat) / 1000, currentSrc: 'native:' + nat.sel.sessionId + ':' + nat.sel.itemId };
+        }
+        return null;
+      }
+      if (nat.noVideoSince) { fitNativeVideo(false); nat.noVideoSince = 0; nat.sel = null; nat.anchor = null; }
       var due = comp.open ? POLL_OPEN : POLL_IDLE;
       if (!comp.polling && Date.now() - comp.lastPoll > due && document.visibilityState !== 'hidden' && C() && C().accessToken && C().accessToken()) poll();
       if (!companionLive()) return null;
@@ -247,6 +300,7 @@
     remote: remote,
 
     seek: function (ms) {
+      if (nativeLive()) { remoteFor(nat, 'seek', ms).catch(function (e) { alert(e.message); }); return; }
       if (companionLive()) { remote('seek', ms).catch(function (e) { alert(e.message); }); return; }
       var c = C();
       if (media.sessionId) {

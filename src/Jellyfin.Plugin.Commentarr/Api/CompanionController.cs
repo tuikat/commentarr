@@ -28,7 +28,7 @@ public class CompanionController : ControllerBase
     private Guid? UserId => Guid.TryParse(User.FindFirst("Jellyfin-UserId")?.Value, out var g) ? g : null;
 
     [HttpGet("NowPlaying")]
-    public ActionResult NowPlaying([FromQuery] string? exclude)
+    public ActionResult NowPlaying([FromQuery] string? exclude, [FromQuery] string? device)
     {
         var uid = UserId;
         if (uid is null)
@@ -37,7 +37,8 @@ public class CompanionController : ControllerBase
         }
 
         var list = _sessions.Sessions
-            .Where(s => s.UserId.Equals(uid.Value) && s.NowPlayingItem is not null && !string.Equals(s.DeviceId, exclude, StringComparison.Ordinal))
+            .Where(s => s.UserId.Equals(uid.Value) && s.NowPlayingItem is not null
+                && (device is null ? !string.Equals(s.DeviceId, exclude, StringComparison.Ordinal) : string.Equals(s.DeviceId, device, StringComparison.Ordinal)))
             .Select(s =>
             {
                 var item = s.NowPlayingItem!;

@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/tuikat/commentarr/main/images/icon.png",
     "versions": [
       {
+        "version": "1.0.9.0",
+        "changelog": "The sidebar is a solid dark panel when it sits beside or below the video (glass only when it floats over the picture).",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/tuikat/commentarr/releases/download/v1.0.9/commentarr_1.0.9.0.zip",
+        "checksum": "541c2da1dceef79c430589f6f6e72ed2",
+        "timestamp": "2026-11-16T07:14:07Z"
+      },
+      {
         "version": "1.0.8.0",
         "changelog": "Works in Jellyfin Media Player and Jellyfin Desktop: these apps play video natively (mpv), so Commentarr now follows their playback through the server and the comments button appears in their player too. Where the app allows it, the sidebar shrinks the video to sit beside it.",
         "targetAbi": "10.11.0.0",

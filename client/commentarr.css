@@ -216,6 +216,8 @@ html.cmtr-squeeze .upNextContainer { right: 424px !important; }
 html.cmtr-squeeze .videoOsdBottom { left: 0; }
 .videoPlayerContainer, .videoOsdBottom { transition: right 0.28s var(--c-ease); }
 html.cmtr-squeeze .cmtr-side { animation: none; }
+/* beside the picture (or below it) there is nothing behind the panel worth blurring: solid, near-black */
+html.cmtr-squeeze .cmtr-side, html.cmtr-squeeze-bottom .cmtr-side { background: #141417; -webkit-backdrop-filter: none; backdrop-filter: none; }
 @media (prefers-reduced-motion: reduce) { .videoPlayerContainer, .videoOsdBottom { transition: none; } }
 
 /* phone or small tablet held upright: the sidebar is a sheet along the bottom; the video moves up above it */

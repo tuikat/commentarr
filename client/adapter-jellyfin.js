@@ -206,18 +206,31 @@
   // Player (from Plex Media Player) can be told where to draw the video; when it can, keep the video
   // inside the web player's box, so the sidebar sits beside the picture instead of over it.
   function nativeApi() { var p = window.api && window.api.player; return p && typeof p.setVideoRectangle === 'function' ? p : null; }
+  // The app measures in physical screen pixels (page pixels x devicePixelRatio: a TV at 200% scaling has
+  // twice as many), and an empty rectangle (0, 0, 0, 0) gives the video the whole window back. Restoring with
+  // a measured size instead left the video small on scaled displays.
   function fitNativeVideo(active) {
     var p = nativeApi(); if (!p) return;
     var box = document.querySelector('.videoPlayerContainer');
-    var full = { x: 0, y: 0, w: window.innerWidth, h: window.innerHeight };
-    var r = full;
-    if (active && box) { var b = box.getBoundingClientRect(); if (b.width > 50 && b.height > 50) r = { x: Math.round(b.left), y: Math.round(b.top), w: Math.round(b.width), h: Math.round(b.height) }; }
-    var isFull = r.x === 0 && r.y === 0 && r.w === full.w && r.h === full.h;
-    if (!nat.rect && isFull) return;                       // never touched it: leave the app alone
-    var key = r.x + ',' + r.y + ',' + r.w + ',' + r.h;
+    var r = null;                                           // null = the whole window
+    if (active && box) {
+      var b = box.getBoundingClientRect();
+      var whole = b.left <= 1 && b.top <= 1 && b.right >= window.innerWidth - 1 && b.bottom >= window.innerHeight - 1;
+      if (!whole && b.width > 50 && b.height > 50) {
+        var d = window.devicePixelRatio || 1;
+        r = { x: Math.round(b.left * d), y: Math.round(b.top * d), w: Math.round(b.width * d), h: Math.round(b.height * d) };
+      }
+    }
+    if (!r && !nat.rect) return;                            // never touched it: leave the app alone
+    var key = r ? r.x + ',' + r.y + ',' + r.w + ',' + r.h : null;
     if (nat.rect === key) return;
-    try { p.setVideoRectangle(r.x, r.y, r.w, r.h); nat.rect = isFull ? null : key; } catch (e) { nat.rect = null; }
+    try {
+      if (r) p.setVideoRectangle(r.x, r.y, r.w, r.h); else p.setVideoRectangle(0, 0, 0, 0);
+      nat.rect = key;
+    } catch (e) { nat.rect = null; }
   }
+  // Leaving the page mid-playback: hand the whole window back.
+  window.addEventListener('pagehide', function () { if (nat.rect) fitNativeVideo(false); });
 
   // for bug reports: window.__commentarrState() in the browser console
   window.__commentarrState = function () { return { streamId: streamId, since: Math.round(since), now: Math.round(performance.now()), stale: media.stale, forItem: media.forItem, lastSrc: lastSrc, session: media.sessionId, companion: { open: comp.open, sel: comp.sel, anchor: comp.anchor, posMs: Math.round(compPos()) }, native: { live: nativeLive(), sel: nat.sel, posMs: Math.round(clockPos(nat)), api: !!nativeApi(), rect: nat.rect } }; };

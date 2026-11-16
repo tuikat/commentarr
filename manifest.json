@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/tuikat/commentarr/main/images/icon.png",
     "versions": [
       {
+        "version": "1.0.10.0",
+        "changelog": "Jellyfin Media Player: closing the sidebar now gives the video the whole window back (it could stay small on displays with scaling), and the video lines up beside the sidebar correctly on scaled displays.",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/tuikat/commentarr/releases/download/v1.0.10/commentarr_1.0.10.0.zip",
+        "checksum": "de0bb1604a00c3a827728a15ea6ef86b",
+        "timestamp": "2026-11-16T07:28:06Z"
+      },
+      {
         "version": "1.0.9.0",
         "changelog": "The sidebar is a solid dark panel when it sits beside or below the video (glass only when it floats over the picture).",
         "targetAbi": "10.11.0.0",
